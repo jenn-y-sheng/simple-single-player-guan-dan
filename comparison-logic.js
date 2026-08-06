@@ -26,7 +26,7 @@ function isSingle(cards) {
 }
 
 function isPair(cards) {
-  if (cards.length != 2) {
+  if (cards.length !== 2) {
     return false;
   }
 
@@ -41,7 +41,7 @@ function isPair(cards) {
 }
 
 function isTriple(cards) {
-  if (cards.length != 3) {
+  if (cards.length !== 3) {
     return false;
   }
 
@@ -58,6 +58,47 @@ function isTriple(cards) {
 
   const targetRank = naturals[0].rank;
   return naturals.every(c => c.rank === targetRank);
+}
+
+function isFullHouse(cards) {
+  if (cards.length !== 5) {
+    return false;
+  }
+
+  const hasJokers = cards.some(c => c.rank >= 15);
+  if (hasJokers) {
+    return false;
+  }
+
+  const wilds = cards.filter(card => card.isWild).length;
+  const naturals = cards.filter(card => !card.isWild);
+  
+  const counts = {};
+  naturals.forEach(card => { 
+    counts[card.rank] = (counts[card.rank] || 0) + 1; 
+  });
+  const uniqueRanks = Object.keys(counts);
+
+  if (uniqueRanks.length > 2) {
+    return false;
+  }
+
+  if (uniqueRanks.length <= 1) {
+    return true;
+  }
+
+  const [rankA, rankB] = uniqueRanks;
+  const maxCount = Math.max(counts[rankA], counts[rankB]);
+  const minCount = Math.min(counts[rankA], counts[rankB]);
+
+  if (wilds === 0) {
+    return maxCount === 3 && minCount === 2;
+  }
+  if (wilds === 1) {
+    return (maxCount === 3 && minCount === 1) || (maxCount === 2 && minCount === 2);
+  }
+  
+  return wilds >= 2;
 }
 
 // basic testing
