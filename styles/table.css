@@ -1,0 +1,50 @@
+body {
+  background-color: #2b5c3a;
+}
+
+#game-container {
+  display: grid;
+  grid-template-columns: 150px 1fr 150px;
+  grid-template-rows: 150px 1fr 220px; 
+  grid-template-areas:
+    ". top ."
+    "left center right"
+    ". bottom .";
+  height: 100vh;
+  width: 100vw;
+}
+
+#player-top { grid-area: top; }
+#player-left { grid-area: left; }
+#player-right { grid-area: right; }
+#center-table { grid-area: center; }
+#player-bottom { grid-area: bottom; }
+
+.player-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+#action-bar {
+  position: absolute;
+  top: -40px; /* Floats just above the player's cards */
+  display: flex;
+  gap: 15px;
+}
+
+.action-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 5px;
+  background-color: #f1c40f;
+  color: #333;
+  cursor: pointer;
+}
+
+.action-button:hover {
+  background-color: #f39c12;
+}

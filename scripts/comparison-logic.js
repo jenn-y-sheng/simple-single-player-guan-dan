@@ -11,12 +11,10 @@ export let currentLevel = 2;
 class Classification {
   name;
   topRank;
-  length;
 
   constructor(classificationInfo) {
     this.name = classificationInfo.name;
     this.topRank = classificationInfo.topRank;
-    this.length = classificationInfo.length;
   }
 }
 
@@ -33,8 +31,7 @@ export function evalSingle(cards) {
   if (cards.length !== 1) return null;
   return new Classification({ 
     name: 'Single',
-    topRank: cards[0].rank,
-    length: 1
+    topRank: cards[0].rank
   });
 }
 
@@ -58,8 +55,7 @@ export function evalPair(cards) {
 
   return new Classification({
     name: 'Pair',
-    topRank: topRank,
-    length: 2
+    topRank: topRank
   });
 }
 
@@ -79,8 +75,7 @@ export function evalTriple(cards) {
   if (naturals.every(card => card.rank === targetRank)) {
     return new Classification({
       name: 'Triple',
-      topRank: targetRank,
-      length: 3
+      topRank: targetRank
     });
   }
   return null;
@@ -149,8 +144,7 @@ export function evalFullHouse(cards) {
   }
   return new Classification({
     name: 'Full-House',
-    topRank: topRank,
-    length: 5
+    topRank: topRank
   });
 }
 
@@ -258,8 +252,7 @@ export function evalStraight(cards) {
 
   return new Classification({
     name: 'Straight',
-    topRank: topRank,
-    length: 5
+    topRank: topRank
   });
 }
 
@@ -279,8 +272,7 @@ export function evalTube(cards) {
 
   return new Classification({
     name: 'Tube',
-    topRank: topRank,
-    length: 6
+    topRank: topRank
   });
 }
 
@@ -300,8 +292,7 @@ export function evalPlate(cards) {
 
   return new Classification({
     name: 'Plate',
-    topRank: topRank,
-    length: 6
+    topRank: topRank
   });
 }
 
