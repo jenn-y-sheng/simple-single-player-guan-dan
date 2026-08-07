@@ -1,7 +1,7 @@
 import { currentLevel, evaluatePlay, canBeat } from "./comparison-logic.js";
 import { generateDeck, fisherYatesShuffle } from "./deck.js";
 
-const gameState = {
+export const gameState = {
   players: [[], [], [], []],
   activePlayerIndex: 0,
   passCount: 0,

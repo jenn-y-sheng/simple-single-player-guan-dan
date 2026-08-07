@@ -5,7 +5,7 @@ body {
 #game-container {
   display: grid;
   grid-template-columns: 150px 1fr 150px;
-  grid-template-rows: 150px 1fr 220px; 
+  grid-template-rows: 150px 1fr auto; 
   grid-template-areas:
     ". top ."
     "left center right"
@@ -18,7 +18,11 @@ body {
 #player-left { grid-area: left; }
 #player-right { grid-area: right; }
 #center-table { grid-area: center; }
-#player-bottom { grid-area: bottom; }
+#player-bottom { 
+  grid-area: bottom;
+  align-items: flex-end;
+  padding-bottom: 20px;
+}
 
 .player-area {
   display: flex;
@@ -27,9 +31,16 @@ body {
   position: relative;
 }
 
+#hand-container {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding-top: 80px;
+}
+
 #action-bar {
   position: absolute;
-  top: -40px; /* Floats just above the player's cards */
+  top: -80px;
   display: flex;
   gap: 15px;
 }

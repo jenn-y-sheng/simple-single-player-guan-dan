@@ -1,0 +1,22 @@
+.card {
+  width: 80px;
+  height: 120px;
+  background-color: transparent;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  margin-left: -40px;
+  margin-top: -80px;
+  cursor: pointer;
+  position: relative;
+  top: 0;
+  transition: top 0.1s ease-out;
+}
+
+.card:hover {
+  top: -15px;
+}
+
+.card.staged {
+  top: -30px;
+}
