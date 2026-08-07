@@ -1,5 +1,8 @@
 body {
   background-color: #2b5c3a;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 #game-container {
