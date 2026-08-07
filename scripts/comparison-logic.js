@@ -381,7 +381,7 @@ export function evalBomb(cards) {
   return null;
 }
 
-function evaluatePlay(cards) {
+export function evaluatePlay(cards) {
   const bomb = evalBomb(cards);
   if (bomb) {
     return bomb
