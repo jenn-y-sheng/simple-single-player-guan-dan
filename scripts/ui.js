@@ -10,13 +10,24 @@ function getSvgFileName(card) {
     'C': 'clubs',
     'D': 'diamonds'
   };
-  const suitStr = suitNames[card.suit];
+  let suitStr = suitNames[card.suit];
 
   let rankStr = card.rank;
-  if (card.rank === 11) rankStr = 'jack';
-  if (card.rank === 12) rankStr = 'queen';
-  if (card.rank === 13) rankStr = 'king';
-  if (card.rank === 14) rankStr = 'ace';
+  if (card.rank === 11) {
+    rankStr = 'jack';
+    suitStr += '2';
+  }
+  if (card.rank === 12) {
+    rankStr = 'queen';
+    suitStr += '2';
+  }
+  if (card.rank === 13) {
+    rankStr = 'king';
+    suitStr += '2';
+  }
+  if (card.rank === 14) {
+    rankStr = 'ace';
+  }
 
   return `${rankStr}_of_${suitStr}.svg`
 }
@@ -46,6 +57,35 @@ function renderHumanHand() {
   })
 }
 
+function renderOpponentHands() {
+  const opponents = [
+    {id: 'player-right', index: 1, layoutClass: 'vertical-hand-right'},
+    {id: 'player-top', index: 2, layoutClass: 'horizontal-hand'},
+    {id: 'player-left', index: 3, layoutClass: 'vertical-hand-left'}
+  ];
+
+  opponents.forEach((opp) => {
+    const container = document.getElementById(opp.id);
+    container.innerHTML = '';
+
+    const handDiv = document.createElement('div');
+    handDiv.classList.add(opp.layoutClass);
+
+    const cardCount = gameState.players[opp.index].length;
+
+    for (let i = 0; i < cardCount; i++) {
+      const cardElement = document.createElement('div');
+      cardElement.classList.add('card-back');
+      if (opp.layoutClass.includes('vertical-hand')) {
+        cardElement.classList.add('card-back-vertical');
+      }
+      handDiv.appendChild(cardElement);
+    }
+    container.appendChild(handDiv);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   renderHumanHand();
+  renderOpponentHands();
 });
