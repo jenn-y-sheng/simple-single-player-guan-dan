@@ -8,7 +8,7 @@
 
 let currentLevel = 2;
 
-class Card {
+export class Card {
   rank;
   suit;
   isWild;
@@ -16,8 +16,7 @@ class Card {
   constructor(cardInfo) {
     this.rank = cardInfo.rank;
     this.suit = cardInfo.suit;
-    this.isWild = (this.rank === currentLevel);
-    console.log(this);
+    this.isWild = (this.rank === currentLevel && this.suit === 'H');
   }
 }
 
@@ -148,10 +147,10 @@ function checkSequenceWithAces(cards, seqLength, groupSize) {
   }
 
   // Check if there was a high ace if failed, then try again with low ace
-  const hasAce = naturals.some(c => c.rank === 14);
+  const hasAce = naturals.some(card => card.rank === 14);
   if (hasAce) {
-    const lowAceNaturals = naturals.map(c => 
-      c.rank === 14 ? { ...c, rank: 1 } : c
+    const lowAceNaturals = naturals.map(card => 
+      card.rank === 14 ? { ...card, rank: 1 } : card
     );
     return isValidSequence(lowAceNaturals, wildsCount, seqLength, groupSize);
   }
@@ -161,14 +160,14 @@ export function isStraight(cards) {
   if (cards.length != 5) {
     return false;
   }
-  const hasJokers = cards.some(c => c.rank >= 15);
+  const hasJokers = cards.some(card => card.rank >= 15);
   if (hasJokers) {
     return false;
   }
 
-  const naturals = cards.filter(c => !c.isWild);
+  const naturals = cards.filter(card => !card.isWild);
   // If only 1 unique suit, it's a bomb (straight flush)
-  const uniqueSuits = new Set(naturals.map(c => c.suit));
+  const uniqueSuits = new Set(naturals.map(card => card.suit));
   if (uniqueSuits.size <= 1) {
     return false;
   }
@@ -198,4 +197,78 @@ export function isPlate(cards) {
   }
 
   return checkSequenceWithAces(cards, 2, 3); // sequence of 2 distinct ranks, 3 per rank
+}
+
+// Bomb tiers (lowest to highest)
+// 1: 4 of a kind
+// 2: 5 of a kind
+// 3: Straight flush (straight with same suit)
+// 4: 6 of a kind
+// 5: 7 of a kind
+// 6: 8 of a kind
+// 7: 9 of a kind
+// 8: 10 of a kind
+// 9: All 4 jokers
+export function evalBomb(cards) {
+  if (cards.length < 4 || cards.length > 10) {
+    return null;
+  }
+
+  const naturals = cards.filter(card => !card.isWild);
+  const uniqueRanks = new Set(naturals.map(card => card.rank));
+  const len = cards.length;
+
+  // Joker bomb with 2 small and 2 big jokers (biggest bomb)
+  const smallJokers = cards.filter(card => card.rank === 15).length;
+  const bigJokers = cards.filter(card => card.rank === 16).length;
+  const hasJokers = smallJokers > 0 || bigJokers > 0;
+  
+  if (len === 4 && smallJokers === 2 && bigJokers === 2) {
+    return { name: "Four-Joker", tier: 9, topRank: 16 }; 
+  }
+
+  // if has jokers but not joker bomb, it's not a bomb
+  if (hasJokers) {
+    return null;
+  }
+
+  if (len === 5) {
+    const uniqueSuits = new Set(naturals.map(card => card.suit));
+    if (uniqueSuits.size <= 1 && checkSequenceWithAces(cards, 5, 1)) {
+      const hasAce = uniqueRanks.has(14);
+      const hasTwo = uniqueRanks.has(2);
+      let topRank;
+      // A 2 3 4 5
+      if (hasAce && hasTwo) {
+        topRank = 5;
+      } else {
+        const minRank = Math.min(...uniqueRanks);
+        topRank = minRank + 4;
+      }
+
+      return { name: "Straight Flush", tier: 3, topRank: topRank };
+    }
+  }
+
+  if (naturals.length <= 1 || uniqueRanks.size === 1) {
+    let tier;
+    if (len === 4) {
+      tier = 1;
+    } else if (len === 5) {
+      tier = 2;
+    } else {
+      tier = len - 2;
+    }
+
+    let topRank;
+    if (naturals.length === 0) { // all wilds
+      topRank = currentLevel;
+    } else {
+      topRank = naturals[0].rank;
+    }
+
+    return { name: `${len}-of-a-Kind`, tier, topRank };
+  }
+
+  return null;
 }
