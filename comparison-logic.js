@@ -24,7 +24,7 @@ class Classification {
   name;
   topRank;
   length;
-s
+
   constructor(classificationInfo) {
     this.name = classificationInfo.name;
     this.topRank = classificationInfo.topRank;
@@ -393,3 +393,46 @@ export function evalBomb(cards) {
   return null;
 }
 
+function evaluatePlay(cards) {
+  const bomb = evalBomb(cards);
+  if (bomb) {
+    return bomb
+  }
+
+  return evalSingle(cards)
+    || evalPair(cards)
+    || evalTriple(cards)
+    || evalFullHouse(cards)
+    || evalStraight(cards)
+    || evalTube(cards)
+    || evalPlate(cards);
+}
+
+export function canBeat(attemptedCards, currentCards) {
+  const current = evaluatePlay(currentCards);
+  const attempted = evaluatePlay(attemptedCards);
+
+  if (!attempted) {
+    return false;
+  }
+
+  if (current.tier && attempted.tier) {
+    if (current.tier < attempted.tier) {
+      return true;
+    } else if (current.tier === attempted.tier) {
+      return attempted.topRank > current.topRank;
+    } else {
+      return false;
+    }
+  }
+
+  if (!current.tier && attempted.tier) {
+    return true;
+  }
+
+  if (current.name === attempted.name) {
+    return attempted.topRank > current.topRank;
+  }
+
+  return false;
+}

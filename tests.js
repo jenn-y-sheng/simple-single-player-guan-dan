@@ -1,4 +1,4 @@
-import { Card, evalSingle, evalPair, evalTriple, evalFullHouse, evalStraight, evalTube, evalPlate, evalBomb } from "./comparison-logic.js";
+import { Card, evalSingle, evalPair, evalTriple, evalFullHouse, evalStraight, evalTube, evalPlate, evalBomb, canBeat } from "./comparison-logic.js";
 
 const c = (rank, suit = 'S') => new Card({ rank, suit });
 
@@ -94,5 +94,72 @@ test("Bomb: Decuple (10 of a kind) with 2 Wilds is Tier 8", decupleBomb && decup
 
 const sfBomb = evalBomb([c(4,'S'), c(5,'S'), c(6,'S'), c(7,'S'), c(8,'S')]);
 test("Bomb: Standard Straight Flush is Tier 3", sfBomb && sfBomb.tier === 3);
+
+console.log("\n--- RUNNING CANBEAT COMPARISON TESTS ---");
+
+// 1. Ordinary vs Ordinary (Same Type)
+test("Combat: Higher Single beats Lower Single", 
+  canBeat([c(8)], [c(4)])
+);
+test("Combat: Lower Single fails against Higher Single", 
+  !canBeat([c(4)], [c(8)])
+);
+test("Combat: Higher Pair beats Lower Pair", 
+  canBeat([c(10), c(10)], [c(4), c(4)])
+);
+test("Combat: Higher Triple beats Lower Triple", 
+  canBeat([c(14), c(14), c(14)], [c(10), c(10), c(10)])
+);
+
+// Full House comparisons (Rank is strictly determined by the Triple)
+test("Combat: Full House (8s full of 3s) beats Full House (7s full of Aces)",
+  canBeat([c(8), c(8), c(8), c(3), c(3)], [c(7), c(7), c(7), c(14), c(14)])
+);
+
+// Sequence comparisons
+test("Combat: Higher Straight beats Lower Straight",
+  canBeat([c(5,'S'), c(6,'H'), c(7,'C'), c(8,'D'), c(9,'S')], [c(4,'S'), c(5,'H'), c(6,'C'), c(7,'D'), c(8,'S')])
+);
+test("Combat: Normal Straight beats Ace-Low Straight",
+  canBeat([c(6,'S'), c(7,'H'), c(8,'C'), c(9,'D'), c(10,'S')], [c(14,'S'), c(2,'H'), c(3,'C'), c(4,'D'), c(5,'S')])
+);
+
+// 2. Ordinary vs Ordinary (Different Types - Should Fail)
+test("Combat: Pair cannot beat Single (Mismatched types)", 
+  !canBeat([c(4), c(4)], [c(8)])
+);
+test("Combat: Full House cannot beat Straight (Mismatched types)",
+  !canBeat([c(8), c(8), c(8), c(3), c(3)], [c(4,'S'), c(5,'H'), c(6,'C'), c(7,'D'), c(8,'S')])
+);
+
+// 3. Bombs vs Ordinary Plays
+test("Combat: Quadruple Bomb beats High Pair", 
+  canBeat([c(4), c(4), c(4), c(4)], [c(14), c(14)])
+);
+test("Combat: Straight Flush beats Full House",
+  canBeat([c(4,'S'), c(5,'S'), c(6,'S'), c(7,'S'), c(8,'S')], [c(14), c(14), c(14), c(3), c(3)])
+);
+
+// 4. Bombs vs Bombs
+test("Combat: Higher Tier Bomb (5-of-a-Kind) beats Lower Tier (4-of-a-Kind)",
+  canBeat([c(3), c(3), c(3), c(3), c(3)], [c(14), c(14), c(14), c(14)])
+);
+test("Combat: Same Tier Bomb, Higher Rank beats Lower Rank",
+  canBeat([c(8), c(8), c(8), c(8)], [c(4), c(4), c(4), c(4)])
+);
+test("Combat: Same Tier Bomb, Lower Rank fails",
+  !canBeat([c(4), c(4), c(4), c(4)], [c(8), c(8), c(8), c(8)])
+);
+test("Combat: Four-Joker Bomb beats Decuple (Tier 9 vs Tier 8)",
+  canBeat(
+    [redJoker(), redJoker(), blackJoker(), blackJoker()],
+    [c(3), c(3), c(3), c(3), c(3), c(3), c(3), c(3), c(2,'H'), c(2,'H')]
+  )
+);
+
+// 5. Invalid Plays
+test("Combat: Invalid attempted play fails to beat valid play", 
+  !canBeat([c(4), c(5)], [c(8)])
+);
 
 printSummary();
