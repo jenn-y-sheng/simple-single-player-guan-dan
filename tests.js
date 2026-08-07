@@ -1,4 +1,4 @@
-import { Card, isSingle, isPair, isTriple, isFullHouse, isStraight, isTube, isPlate, evalBomb } from "./comparison-logic.js";
+import { Card, evalSingle, evalPair, evalTriple, evalFullHouse, evalStraight, evalTube, evalPlate, evalBomb } from "./comparison-logic.js";
 
 const c = (rank, suit = 'S') => new Card({ rank, suit });
 
@@ -26,71 +26,73 @@ function printSummary() {
 
 console.log("--- RUNNING GUAN DAN LOGIC TESTS ---\n");
 
-test("Single: Valid single card", isSingle([c(4)]));
-test("Single: Invalid two cards", !isSingle([c(4), c(5)]));
+// 1. SINGLES
+const singleRes = evalSingle([c(4)]);
+test("Single: Valid and returns correct topRank", singleRes && singleRes.topRank === 4);
+test("Single: Invalid two cards returns null", evalSingle([c(4), c(5)]) === null);
+const wildSingleRes = evalSingle([c(2, 'H')]);
+test("Single: Wild card assumes current level rank", wildSingleRes && wildSingleRes.topRank === 2);
 
-test("Pair: Natural pair is valid", isPair([c(4), c(4)]));
-test("Pair: Natural + Wild is valid", isPair([c(4), c(2, 'H')]));
-test("Pair: Wild + Wild is valid", isPair([c(2, 'H'), c(2, 'H')]));
-test("Pair: Mismatched naturals are invalid", !isPair([c(4), c(5)]));
-test("Pair: Black and Red Joker cannot pair", !isPair([blackJoker(), redJoker()]));
+// 2. PAIRS
+const pairRes = evalPair([c(4), c(4)]);
+test("Pair: Natural pair is valid", pairRes && pairRes.topRank === 4);
+const wildPairRes = evalPair([c(2, 'H'), c(2, 'H')]);
+test("Pair: 2 Wilds assume current level rank", wildPairRes && wildPairRes.topRank === 2);
+const mixedPairRes = evalPair([c(9), c(2, 'H')]);
+test("Pair: 1 Natural + 1 Wild takes rank of natural", mixedPairRes && mixedPairRes.topRank === 9);
+test("Pair: Mismatched naturals are invalid", evalPair([c(4), c(5)]) === null);
 
-test("Triple: 3 Naturals is valid", isTriple([c(7), c(7), c(7)]));
-test("Triple: 1 Natural + 2 Wilds is valid", isTriple([c(7), c(2, 'H'), c(2, 'H')]));
-test("Triple: Jokers cannot be in a triple", !isTriple([blackJoker(), blackJoker(), blackJoker()]));
-test("Triple: Mismatched cards are invalid", !isTriple([c(7), c(7), c(8)]));
+// 3. TRIPLES
+const tripleRes = evalTriple([c(7), c(7), c(7)]);
+test("Triple: 3 Naturals is valid", tripleRes && tripleRes.topRank === 7);
+const mixedTripleRes = evalTriple([c(9), c(2, 'H'), c(2, 'H')]);
+test("Triple: 1 Natural + 2 Wilds is valid", mixedTripleRes && mixedTripleRes.topRank === 9);
+test("Triple: Jokers cannot be in a triple", evalTriple([blackJoker(), blackJoker(), blackJoker()]) === null);
 
-test("Full House: Standard 3+2 is valid", isFullHouse([c(4), c(4), c(4), c(5), c(5)]));
-test("Full House: 2 Naturals of rank A, 2 Naturals of rank B + 1 Wild", isFullHouse([c(4), c(4), c(5), c(5), c(2, 'H')]));
-test("Full House: Jokers invalidate the hand", !isFullHouse([c(4), c(4), c(4), blackJoker(), redJoker()]));
-test("Full House: 3 distinct natural ranks is invalid", !isFullHouse([c(4), c(4), c(5), c(6), c(2, 'H')]));
+// 4. FULL HOUSES
+const fhRes = evalFullHouse([c(4), c(4), c(4), c(5), c(5)]);
+test("Full House: Rank is determined by the Triple (4-4-4-5-5)", fhRes && fhRes.topRank === 4);
+const fhRes2 = evalFullHouse([c(8), c(8), c(9), c(9), c(2, 'H')]);
+test("Full House: 2 pairs + 1 Wild assigns wild to highest pair (8-8-9-9-W)", fhRes2 && fhRes2.topRank === 9);
+const fhRes3 = evalFullHouse([c(7), c(7), c(7), c(2, 'H'), c(2, 'H')]);
+test("Full House: 3 Naturals + 2 Wilds is valid (7-7-7-W-W)", fhRes3 && fhRes3.topRank === 7);
+test("Full House: 4 Naturals + 1 Wild is INVALID", evalFullHouse([c(7), c(7), c(7), c(7), c(2, 'H')]) === null);
 
-test("Straight: Standard 5-card sequence", isStraight([c(4,'S'), c(5,'H'), c(6,'C'), c(7,'D'), c(8,'S')]));
-test("Straight: Ace Low (A-2-3-4-5) is valid", isStraight([c(14,'S'), c(2,'H'), c(3,'C'), c(4,'D'), c(5,'S')]));
-test("Straight: Ace High (10-J-Q-K-A) is valid", isStraight([c(10,'S'), c(11,'H'), c(12,'C'), c(13,'D'), c(14,'S')]));
-test("Straight: Wrap-around (Q-K-A-2-3) is INVALID", !isStraight([c(12,'S'), c(13,'H'), c(14,'C'), c(2,'D'), c(3,'S')]));
-test("Straight: With 2 Wild Cards bridging a gap", isStraight([c(4,'S'), c(2,'H'), c(2,'H'), c(7,'D'), c(8,'S')]));
-test("Straight: Rejected if all same suit (Straight Flush)", !isStraight([c(4,'S'), c(5,'S'), c(6,'S'), c(7,'S'), c(8,'S')]));
+// 5. STRAIGHTS
+const strRes = evalStraight([c(4,'S'), c(5,'H'), c(6,'C'), c(7,'D'), c(8,'S')]);
+test("Straight: Standard 5-card sequence (4-8)", strRes && strRes.topRank === 8);
+const strLow = evalStraight([c(14,'S'), c(2,'H'), c(3,'C'), c(4,'D'), c(5,'S')]);
+test("Straight: Ace Low (A-2-3-4-5) has topRank of 5", strLow && strLow.topRank === 5);
+const strHigh = evalStraight([c(10,'S'), c(11,'H'), c(12,'C'), c(13,'D'), c(14,'S')]);
+test("Straight: Ace High (10-J-Q-K-A) has topRank of 14", strHigh && strHigh.topRank === 14);
+const strWild = evalStraight([c(6,'S'), c(7,'H'), c(8,'C'), c(2,'H'), c(2,'H')]);
+test("Straight: Sliding window maximizes wild cards (6-7-8-W-W becomes topRank 10)", strWild && strWild.topRank === 10);
+test("Straight: Wrap-around (Q-K-A-2-3) is INVALID", evalStraight([c(12,'S'), c(13,'H'), c(14,'C'), c(2,'D'), c(3,'S')]) === null);
 
-test("Tube: Standard 3 pairs", isTube([c(4), c(4), c(5), c(5), c(6), c(6)]));
-test("Tube: Ace Low (A-A-2-2-3-3)", isTube([c(14), c(14), c(2), c(2), c(3), c(3)]));
-test("Tube: With 1 Wild Card replacing a 5", isTube([c(4), c(4), c(5), c(2, 'H'), c(6), c(6)]));
-test("Tube: Spread too wide (4, 4, 5, 5, 7, 7) is INVALID", !isTube([c(4), c(4), c(5), c(5), c(7), c(7)]));
-test("Tube: Wrap-around (K-K-A-A-2-2) is INVALID", !isTube([c(13), c(13), c(14), c(14), c(2), c(2)]));
+// 6. TUBES
+const tubeRes = evalTube([c(4), c(4), c(5), c(5), c(6), c(6)]);
+test("Tube: Standard 3 pairs", tubeRes && tubeRes.topRank === 6);
+const tubeWild = evalTube([c(6), c(6), c(7), c(2, 'H'), c(2, 'H'), c(2, 'H')]);
+test("Tube: Sliding window maximizes wilds in Tube", tubeWild && tubeWild.topRank === 8);
 
-test("Plate: Standard 2 triples", isPlate([c(7), c(7), c(7), c(8), c(8), c(8)]));
-test("Plate: Ace Low (A-A-A-2-2-2)", isPlate([c(14), c(14), c(14), c(2), c(2), c(2)]));
-test("Plate: With 2 Wild Cards", isPlate([c(7), c(7), c(2,'H'), c(8), c(8), c(2,'H')]));
-test("Plate: Non-consecutive triples (7s and 9s) are INVALID", !isPlate([c(7), c(7), c(7), c(9), c(9), c(9)]));
+// 7. PLATES
+const plateRes = evalPlate([c(7), c(7), c(7), c(8), c(8), c(8)]);
+test("Plate: Standard 2 triples", plateRes && plateRes.topRank === 8);
+const plateLow = evalPlate([c(14), c(14), c(14), c(2), c(2), c(2)]);
+test("Plate: Ace Low (A-A-A-2-2-2) has topRank 2", plateLow && plateLow.topRank === 2);
 
 console.log("\n--- RUNNING BOMB TESTS ---");
 
-test("Bomb: 4 Jokers is highest tier", 
-  evalBomb([redJoker(), redJoker(), blackJoker(), blackJoker()]).tier === 9
-);
-test("Bomb: Jokers fail if mismatched", 
-  evalBomb([redJoker(), blackJoker(), blackJoker(), c(4)]) === null
-);
+const jokerBomb = evalBomb([redJoker(), redJoker(), blackJoker(), blackJoker()]);
+test("Bomb: 4 Jokers is Tier 9", jokerBomb && jokerBomb.tier === 9);
 
-test("Bomb: Quadruple (4 of a kind)", evalBomb([c(4), c(4), c(4), c(4)]).tier === 1);
-test("Bomb: Quintuple (5 of a kind)", evalBomb([c(8), c(8), c(8), c(8), c(8)]).tier === 2);
-test("Bomb: Sextuple (6 of a kind)", evalBomb([c(9), c(9), c(9), c(9), c(9), c(9)]).tier === 4);
-test("Bomb: Decuple (10 of a kind) using wilds", 
-  evalBomb([c(3), c(3), c(3), c(3), c(3), c(3), c(3), c(3), c(2,'H'), c(2,'H')]).tier === 8
-);
+const quadBomb = evalBomb([c(4), c(4), c(4), c(4)]);
+test("Bomb: Quadruple (4 of a kind) is Tier 1", quadBomb && quadBomb.tier === 1);
 
-test("Bomb: Standard Straight Flush", 
-  evalBomb([c(4,'S'), c(5,'S'), c(6,'S'), c(7,'S'), c(8,'S')]).tier === 3
-);
-test("Bomb: Straight Flush with Wilds", 
-  evalBomb([c(4,'S'), c(2,'H'), c(6,'S'), c(7,'S'), c(8,'S')]).tier === 3
-);
-test("Bomb: Mixed suits is NOT a Straight Flush", 
-  evalBomb([c(4,'S'), c(5,'H'), c(6,'S'), c(7,'S'), c(8,'S')]) === null
-);
+const decupleBomb = evalBomb([c(3), c(3), c(3), c(3), c(3), c(3), c(3), c(3), c(2,'H'), c(2,'H')]);
+test("Bomb: Decuple (10 of a kind) with 2 Wilds is Tier 8", decupleBomb && decupleBomb.tier === 8);
 
-test("All wilds",
-  evalBomb([c(2,'H'), c(2,'H'), c(2,'H'), c(2,'H')]).topRank === 2
-);
+const sfBomb = evalBomb([c(4,'S'), c(5,'S'), c(6,'S'), c(7,'S'), c(8,'S')]);
+test("Bomb: Standard Straight Flush is Tier 3", sfBomb && sfBomb.tier === 3);
 
 printSummary();

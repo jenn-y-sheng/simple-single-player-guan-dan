@@ -20,53 +20,92 @@ export class Card {
   }
 }
 
-export function isSingle(cards) {
-  return cards.length === 1;
+class Classification {
+  name;
+  topRank;
+  length;
+s
+  constructor(classificationInfo) {
+    this.name = classificationInfo.name;
+    this.topRank = classificationInfo.topRank;
+    this.length = classificationInfo.length;
+  }
 }
 
-export function isPair(cards) {
+class BombClassification extends Classification {
+  tier;
+
+  constructor(classificationInfo) {
+    super(classificationInfo);
+    this.tier = classificationInfo.tier
+  }
+}
+
+export function evalSingle(cards) {
+  if (cards.length !== 1) return null;
+  return new Classification({ 
+    name: 'Single',
+    topRank: cards[0].rank,
+    length: 1
+  });
+}
+
+export function evalPair(cards) {
   if (cards.length !== 2) {
-    return false;
+    return null;
   }
 
-  const wildsCount = cards.filter(card => card.isWild).length;
   const naturals = cards.filter(card => !card.isWild);
 
-  if (wildsCount) {
-    return true;
+  if (naturals.length === 2 && naturals[0].rank !== naturals[1].rank) {
+    return null;
   }
 
-  return cards[0].rank === cards[1].rank;
+  let topRank;
+  if (naturals.length === 0) {
+    topRank = currentLevel;
+  } else {
+    topRank = naturals[0].rank;
+  }
+
+  return new Classification({
+    name: 'Pair',
+    topRank: topRank,
+    length: 2
+  });
 }
 
-export function isTriple(cards) {
+export function evalTriple(cards) {
   if (cards.length !== 3) {
-    return false;
+    return null;
   }
 
-  const hasJokers = cards.some(c => c.rank >= 15);
+  const hasJokers = cards.some(card => card.rank >= 15);
   if (hasJokers) {
-    return false;
+    return null;
   }
 
-  const naturals = cards.filter(c => !c.isWild);
-
-  if (naturals.length === 0) {
-    return true;
-  }
+  const naturals = cards.filter(card => !card.isWild);
 
   const targetRank = naturals[0].rank;
-  return naturals.every(c => c.rank === targetRank);
+  if (naturals.every(card => card.rank === targetRank)) {
+    return new Classification({
+      name: 'Triple',
+      topRank: targetRank,
+      length: 3
+    });
+  }
+  return null;
 }
 
-export function isFullHouse(cards) {
+export function evalFullHouse(cards) {
   if (cards.length !== 5) {
-    return false;
+    return null;
   }
 
-  const hasJokers = cards.some(c => c.rank >= 15);
+  const hasJokers = cards.some(card => card.rank >= 15);
   if (hasJokers) {
-    return false;
+    return null;
   }
 
   const wildsCount = cards.filter(card => card.isWild).length;
@@ -76,74 +115,126 @@ export function isFullHouse(cards) {
   naturals.forEach(card => { 
     counts[card.rank] = (counts[card.rank] || 0) + 1; 
   });
-  const uniqueRanks = Object.keys(counts);
+  const uniqueRanks = Object.keys(counts).map(Number);
 
   if (uniqueRanks.length > 2) {
-    return false;
+    return null;
   }
 
-  if (uniqueRanks.length <= 1) {
-    return true;
-  }
+  let topRank;
+  if (uniqueRanks.length === 1) {
+    const rankA = uniqueRanks[0];
+    if (wildsCount === 2 && counts[rankA] === 3) {
+      topRank = rankA;
+    } else {
+      return null; 
+    }
+  } else {
+    const rankA = uniqueRanks[0];
+    const rankB = uniqueRanks[1];
+    const countA = counts[rankA];
+    const countB = counts[rankB];
 
-  const [rankA, rankB] = uniqueRanks;
-  const maxCount = Math.max(counts[rankA], counts[rankB]);
-  const minCount = Math.min(counts[rankA], counts[rankB]);
-
-  if (wildsCount === 0) {
-    return maxCount === 3 && minCount === 2;
+    if (wildsCount === 0) {
+      if (countA === 3 && countB === 2) {
+        topRank = rankA;
+      } else if (countB === 3 && countA === 2) {
+        topRank = rankB;
+      } else {
+        return null;
+      }
+    } 
+    else if (wildsCount === 1) {
+      if (countA === 3 && countB === 1) {
+        topRank = rankA;
+      } else if (countB === 3 && countA === 1) {
+        topRank = rankB;
+      } else if (countA === 2 && countB === 2) {
+        topRank = Math.max(rankA, rankB);
+      } else {
+        return null; 
+      }
+    } 
+    else if (wildsCount === 2) {
+      topRank = Math.max(rankA, rankB);
+    }
   }
-  if (wildsCount === 1) {
-    return (maxCount === 3 && minCount === 1) || (maxCount === 2 && minCount === 2);
-  }
-  
-  return wildsCount >= 2;
+  return new Classification({
+    name: 'Full-House',
+    topRank: topRank,
+    length: 5
+  });
 }
 
-function isValidSequence(naturals, wildsCount, seqLength, groupSize) {
-  if (naturals.length === 0) {
-    return true;
+// function isValidSequence(naturals, wildsCount, seqLength, groupSize) {
+//   if (naturals.length === 0) {
+//     return true;
+//   }
+
+//   const ranks = naturals.map(card => card.rank);
+//   const minRank = Math.min(...ranks);
+//   const maxRank = Math.max(...ranks);
+
+//   // e.g. 2 3 4 5 7, seqLength = 5
+//   // 7 - 2 = 5, but this isn't a straight
+//   if (maxRank - minRank >= seqLength) {
+//     return false;
+//   }
+
+//   const counts = {};
+//   ranks.forEach(r => {
+//     counts[r] = (counts[r] || 0) + 1;
+//   });
+
+//   let deficit = 0;
+//   for (let r = minRank; r < minRank + seqLength; r++) {
+//     const count = counts[r] || 0;
+    
+//     if (count > groupSize) {
+//       return false;
+//     }
+    
+//     // If the count is less than groupsize, we can fill it up with wild cards if there are any
+//     // Record deficits to see if we have exactly enough wilds to make it up
+//     // Also prevents wraparounds
+//     deficit += (groupSize - count);
+//   }
+
+//   return deficit === wildsCount;
+// }
+
+function getSequenceMaxTopRank(naturals, seqLength, groupSize, isLowAce = false) {
+  const ranks = naturals.map(card => card.rank);
+  const counts = {};
+  ranks.forEach(r => counts[r] = (counts[r] || 0) + 1);
+
+  if (Object.values(counts).some(count => count > groupSize)) {
+    return null;
   }
 
-  const ranks = naturals.map(card => card.rank);
   const minRank = Math.min(...ranks);
   const maxRank = Math.max(...ranks);
 
-  // e.g. 2 3 4 5 7, seqLength = 5
-  // 7 - 2 = 5, but this isn't a straight
-  if (maxRank - minRank >= seqLength) {
-    return false;
-  }
+  const absoluteMaxTop = isLowAce ? seqLength : 14;
+  const absoluteMinTop = seqLength;
 
-  const counts = {};
-  ranks.forEach(r => {
-    counts[r] = (counts[r] || 0) + 1;
-  });
-
-  let deficit = 0;
-  for (let r = minRank; r < minRank + seqLength; r++) {
-    const count = counts[r] || 0;
-    
-    if (count > groupSize) {
-      return false;
+  for (let top = absoluteMaxTop; top >= absoluteMinTop; top--) {
+    const bottom = top - seqLength + 1;
+    if (minRank >= bottom && maxRank <= top) {
+       return top; 
     }
-    
-    // If the count is less than groupsize, we can fill it up with wild cards if there are any
-    // Record deficits to see if we have exactly enough wilds to make it up
-    // Also prevents wraparounds
-    deficit += (groupSize - count);
   }
 
-  return deficit === wildsCount;
+  return null;
 }
 
 // Aces can be low (1) or high (14)
 function checkSequenceWithAces(cards, seqLength, groupSize) {
-  const wildsCount = cards.filter(card => card.isWild).length;
-  const naturals = cards.filter(c => !c.isWild);
+  const naturals = cards.filter(card => !card.isWild);
 
-  if (isValidSequence(naturals, wildsCount, seqLength, groupSize)) {
-    return true;
+  let topRank = getSequenceMaxTopRank(naturals, seqLength, groupSize, false);
+  if (topRank !== null) {
+    return topRank;
   }
 
   // Check if there was a high ace if failed, then try again with low ace
@@ -152,51 +243,78 @@ function checkSequenceWithAces(cards, seqLength, groupSize) {
     const lowAceNaturals = naturals.map(card => 
       card.rank === 14 ? { ...card, rank: 1 } : card
     );
-    return isValidSequence(lowAceNaturals, wildsCount, seqLength, groupSize);
+    return getSequenceMaxTopRank(lowAceNaturals, seqLength, groupSize, true);
   }
 }
 
-export function isStraight(cards) {
+export function evalStraight(cards) {
   if (cards.length != 5) {
-    return false;
+    return null;
   }
   const hasJokers = cards.some(card => card.rank >= 15);
   if (hasJokers) {
-    return false;
+    return null;
   }
 
   const naturals = cards.filter(card => !card.isWild);
   // If only 1 unique suit, it's a bomb (straight flush)
   const uniqueSuits = new Set(naturals.map(card => card.suit));
   if (uniqueSuits.size <= 1) {
-    return false;
+    return null;
   }
 
-  return checkSequenceWithAces(cards, 5, 1); // sequence of 5 distinct ranks, 1 per rank
+  const topRank = checkSequenceWithAces(cards, 5, 1); // sequence of 5 distinct ranks, 1 per rank
+  if (!topRank) {
+    return null
+  }
+
+  return new Classification({
+    name: 'Straight',
+    topRank: topRank,
+    length: 5
+  });
 }
 
-export function isTube(cards) {
+export function evalTube(cards) {
   if (cards.length != 6) {
-    return false;
+    return null;
   }
-  const hasJokers = cards.some(c => c.rank >= 15);
+  const hasJokers = cards.some(card => card.rank >= 15);
   if (hasJokers) {
-    return false;
+    return null;
   }
 
-  return checkSequenceWithAces(cards, 3, 2); // sequence of 3 distinct ranks, 2 per rank
+  const topRank = checkSequenceWithAces(cards, 3, 2); // sequence of 3 distinct ranks, 2 per rank
+  if (!topRank) {
+    return null;
+  }
+
+  return new Classification({
+    name: 'Tube',
+    topRank: topRank,
+    length: 6
+  });
 }
 
-export function isPlate(cards) {
+export function evalPlate(cards) {
   if (cards.length != 6) {
-    return false;
+    return null;
   }
-  const hasJokers = cards.some(c => c.rank >= 15);
+  const hasJokers = cards.some(card => card.rank >= 15);
   if (hasJokers) {
-    return false;
+    return null;
   }
 
-  return checkSequenceWithAces(cards, 2, 3); // sequence of 2 distinct ranks, 3 per rank
+  const topRank = checkSequenceWithAces(cards, 2, 3); // sequence of 2 distinct ranks, 3 per rank
+  if (!topRank) {
+    return null;
+  }
+
+  return new Classification({
+    name: 'Plate',
+    topRank: topRank,
+    length: 6
+  });
 }
 
 // Bomb tiers (lowest to highest)
@@ -224,7 +342,10 @@ export function evalBomb(cards) {
   const hasJokers = smallJokers > 0 || bigJokers > 0;
   
   if (len === 4 && smallJokers === 2 && bigJokers === 2) {
-    return { name: "Four-Joker", tier: 9, topRank: 16 }; 
+    return new BombClassification({ 
+      name: "Four-Joker",
+      tier: 9,
+      topRank: 16 }); 
   }
 
   // if has jokers but not joker bomb, it's not a bomb
@@ -246,7 +367,10 @@ export function evalBomb(cards) {
         topRank = minRank + 4;
       }
 
-      return { name: "Straight Flush", tier: 3, topRank: topRank };
+      return new BombClassification({ 
+        name: "Straight-Flush",
+        tier: 3,
+        topRank: topRank });
     }
   }
 
@@ -260,15 +384,12 @@ export function evalBomb(cards) {
       tier = len - 2;
     }
 
-    let topRank;
-    if (naturals.length === 0) { // all wilds
-      topRank = currentLevel;
-    } else {
-      topRank = naturals[0].rank;
-    }
-
-    return { name: `${len}-of-a-Kind`, tier, topRank };
+    return new BombClassification({ 
+      name: `${len}-of-a-Kind`,
+      tier: tier,
+      topRank: naturals[0].rank });
   }
 
   return null;
 }
+
