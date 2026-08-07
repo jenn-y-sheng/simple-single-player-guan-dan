@@ -20,3 +20,12 @@
 .card.staged {
   top: -30px;
 }
+
+.card::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -30px;
+  width: 100%;
+  height: 30px; 
+}
