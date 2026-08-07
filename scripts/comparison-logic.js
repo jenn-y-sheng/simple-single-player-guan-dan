@@ -6,19 +6,7 @@
 // J, Q, K, A: 11, 12, 13, 14
 // Small/Big Joker: 15, 16
 
-let currentLevel = 2;
-
-export class Card {
-  rank;
-  suit;
-  isWild;
-
-  constructor(cardInfo) {
-    this.rank = cardInfo.rank;
-    this.suit = cardInfo.suit;
-    this.isWild = (this.rank === currentLevel && this.suit === 'H');
-  }
-}
+export let currentLevel = 2;
 
 class Classification {
   name;
@@ -408,6 +396,30 @@ function evaluatePlay(cards) {
     || evalPlate(cards);
 }
 
+function compareRanks(attemptedRank, currentRank, playType) {
+  // sequences ignore strong level cards
+  if (['Straight', 'Tube', 'Plate'].includes(playType)) {
+    return attemptedRank > currentRank;
+  }
+
+  if (attemptedRank === currentRank) {
+    return false
+  }
+
+  const attemptIsLevel = (attemptedRank === currentLevel);
+  const currentIsLevel = (currentRank === currentLevel);
+  const attemptIsJoker = (attemptedRank >= 15);
+  const currentIsJoker = (currentRank >= 15);
+  if (attemptIsLevel) {
+    return !currentIsJoker;
+  }
+  if (currentIsLevel) {
+    return attemptIsJoker;
+  }
+
+  return attemptedRank > currentRank;
+}
+
 export function canBeat(attemptedCards, currentCards) {
   const current = evaluatePlay(currentCards);
   const attempted = evaluatePlay(attemptedCards);
@@ -420,7 +432,7 @@ export function canBeat(attemptedCards, currentCards) {
     if (current.tier < attempted.tier) {
       return true;
     } else if (current.tier === attempted.tier) {
-      return attempted.topRank > current.topRank;
+      return compareRanks(attempted.topRank, current.topRank, attempted.name);
     } else {
       return false;
     }
@@ -431,7 +443,7 @@ export function canBeat(attemptedCards, currentCards) {
   }
 
   if (current.name === attempted.name) {
-    return attempted.topRank > current.topRank;
+    return compareRanks(attempted.topRank, current.topRank, attempted.name);
   }
 
   return false;

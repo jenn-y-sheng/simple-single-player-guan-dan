@@ -1,4 +1,5 @@
-import { Card, evalSingle, evalPair, evalTriple, evalFullHouse, evalStraight, evalTube, evalPlate, evalBomb, canBeat } from "./comparison-logic.js";
+import { evalSingle, evalPair, evalTriple, evalFullHouse, evalStraight, evalTube, evalPlate, evalBomb, canBeat } from "../scripts/comparison-logic.js";
+import { Card } from "../scripts/deck.js";
 
 const c = (rank, suit = 'S') => new Card({ rank, suit });
 
@@ -160,6 +161,24 @@ test("Combat: Four-Joker Bomb beats Decuple (Tier 9 vs Tier 8)",
 // 5. Invalid Plays
 test("Combat: Invalid attempted play fails to beat valid play", 
   !canBeat([c(4), c(5)], [c(8)])
+);
+
+console.log("\n--- RUNNING LEVEL CARD TESTS ---");
+
+test("Level Card: Level Single beats Ace Single", 
+  canBeat([c(2, 'S')], [c(14, 'S')])
+);
+test("Level Card: Level Single loses to Small Joker", 
+  !canBeat([c(2, 'S')], [blackJoker()])
+);
+test("Level Card: Level Pair beats Ace Pair", 
+  canBeat([c(2, 'D'), c(2, 'C')], [c(14, 'H'), c(14, 'S')])
+);
+test("Level Card: Level Bomb (4-of-a-Kind) beats Ace Bomb",
+  canBeat([c(2), c(2), c(2), c(2)], [c(14), c(14), c(14), c(14)])
+);
+test("Level Card (Sequence): Straight retains natural rank (Level card does NOT beat Ace in sequences)",
+  !canBeat([c(14,'S'), c(2,'H'), c(3,'C'), c(4,'D'), c(5,'S')], [c(10,'S'), c(11,'H'), c(12,'C'), c(13,'D'), c(14,'S')])
 );
 
 printSummary();
