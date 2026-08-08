@@ -1,4 +1,4 @@
-import { evaluatePlay } from "./comparison-logic.js";
+import { evaluatePlay, canBeat } from "./comparison-logic.js";
 import { gameState } from "./game.js";
 
 function getSvgFileName(card) {
@@ -95,12 +95,27 @@ function handlePlayCards() {
     .map(card => parseInt(card.dataset.index));
   const actualCardsToPlay = stagedIndices.map(index => gameState.players[0][index]);
 
-  const playClass = evaluatePlay(actualCardsToPlay);
+  let isValidPlay = false;
+  let playClass = null;
+
+  if (!gameState.currentTrick) {
+    playClass = evaluatePlay(actualCardsToPlay);
+    if (playClass) {
+      isValidPlay = true;
+    }
+  } else {
+    if (canBeat(actualCardsToPlay, gameState.currentTrick)) {
+      isValidPlay = true;
+      playClass = evaluatePlay(actualCardsToPlay);
+    }
+  }
 
   const trickInfoElement = document.getElementById('trick-info');
 
-  if (playClass) {
+  if (isValidPlay) {
     const indicesToRemove = stagedIndices.sort((a, b) => b - a);
+
+    gameState.currentTrick = [...actualCardsToPlay];
 
     gameState.trickPile = [];
 
@@ -114,9 +129,10 @@ function handlePlayCards() {
     renderHumanHand();
     renderTrickPile();
   } else {
+    const lastTrick = trickInfoElement.textContent;
     trickInfoElement.textContent = 'Invalid Play';
     setTimeout(() => {
-      trickInfoElement.textContent = '';
+      trickInfoElement.textContent = lastTrick;
     }, 2000);
   }
 }

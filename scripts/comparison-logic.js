@@ -322,7 +322,7 @@ export function evalBomb(cards) {
   
   if (len === 4 && smallJokers === 2 && bigJokers === 2) {
     return new BombClassification({ 
-      name: "Four-Joker",
+      name: "Four-Joker Bomb",
       tier: 9,
       topRank: 16 }); 
   }
@@ -347,7 +347,7 @@ export function evalBomb(cards) {
       }
 
       return new BombClassification({ 
-        name: "Straight-Flush",
+        name: "Straight-Flush Bomb",
         tier: 3,
         topRank: topRank });
     }
@@ -364,7 +364,7 @@ export function evalBomb(cards) {
     }
 
     return new BombClassification({ 
-      name: `${len}-of-a-Kind`,
+      name: `${len}-of-a-Kind Bomb`,
       tier: tier,
       topRank: naturals[0].rank });
   }

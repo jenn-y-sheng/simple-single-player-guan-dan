@@ -4,6 +4,7 @@ import { generateDeck, fisherYatesShuffle } from "./deck.js";
 export const gameState = {
   players: [[], [], [], []],
   trickPile: [],
+  currentTrick: null,
   activePlayerIndex: 0,
   passCount: 0,
 
