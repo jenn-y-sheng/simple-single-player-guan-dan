@@ -95,36 +95,16 @@ function handlePlayCards() {
     .map(card => parseInt(card.dataset.index));
   const actualCardsToPlay = stagedIndices.map(index => gameState.players[0][index]);
 
-  let isValidPlay = false;
-  let playClass = null;
-
-  if (!gameState.currentTrick) {
-    playClass = evaluatePlay(actualCardsToPlay);
-    if (playClass) {
-      isValidPlay = true;
-    }
-  } else {
-    if (canBeat(actualCardsToPlay, gameState.currentTrick)) {
-      isValidPlay = true;
-      playClass = evaluatePlay(actualCardsToPlay);
-    }
-  }
+  const isSuccess = gameState.playCards(actualCardsToPlay);
 
   const trickInfoElement = document.getElementById('trick-info');
 
-  if (isValidPlay) {
-    const indicesToRemove = stagedIndices.sort((a, b) => b - a);
+  if (isSuccess) {
+    gameState.trickPile = [...actualCardsToPlay];
 
-    gameState.currentTrick = [...actualCardsToPlay];
+    trickInfoElement.textContent = gameState.currentTrick.details.name;
 
-    gameState.trickPile = [];
-
-    indicesToRemove.forEach(index => {
-      const playedCard = gameState.players[0].splice(index, 1)[0];
-      gameState.trickPile.unshift(playedCard);
-    });
-
-    trickInfoElement.textContent = playClass.name;
+    document.querySelectorAll('.card.staged').forEach(card => card.classList.remove('staged'));
 
     renderHumanHand();
     renderTrickPile();
@@ -153,6 +133,16 @@ function renderTrickPile() {
   });
 }
 
+function handlePass() {
+  if (gameState.currentTrick.cards.length === 0) {
+    console.log('Must play a card');
+    return;
+  }
+  gameState.passTurn();
+
+  document.querySelectorAll('.card.staged').forEach(card => card.classList.remove('staged'));
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   renderHumanHand();
   renderOpponentHands();
@@ -160,4 +150,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 document.getElementById('button-play').addEventListener('click', () => {
   handlePlayCards();
+});
+
+document.getElementById('button-pass').addEventListener('click', () => {
+  handlePass();
 });

@@ -4,7 +4,6 @@ import { generateDeck, fisherYatesShuffle } from "./deck.js";
 export const gameState = {
   players: [[], [], [], []],
   trickPile: [],
-  currentTrick: null,
   activePlayerIndex: 0,
   passCount: 0,
 
@@ -20,7 +19,7 @@ export const gameState = {
     if (this.passCount === 3) {
       console.log(`Player ${this.currentTrick.winnerIndex + 1} wins this turn`);
       this.activePlayerIndex = this.currentTrick.winnerIndex;
-      this.currentTrick = {cards: null, details: null, winnerIndex: null};
+      this.currentTrick = {cards: [], details: null, winnerIndex: null};
       this.passCount = 0;
     } else {
       this.activePlayerIndex = (this.activePlayerIndex + 1) % 4; // so we can wrap around
