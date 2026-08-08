@@ -96,7 +96,8 @@ function handlePlayCards() {
   const actualCardsToPlay = stagedIndices.map(index => gameState.players[0][index]);
 
   const playClass = evaluatePlay(actualCardsToPlay);
-  console.log(playClass);
+
+  const trickInfoElement = document.getElementById('trick-info');
 
   if (playClass) {
     const indicesToRemove = stagedIndices.sort((a, b) => b - a);
@@ -108,8 +109,15 @@ function handlePlayCards() {
       gameState.trickPile.unshift(playedCard);
     });
 
+    trickInfoElement.textContent = playClass.name;
+
     renderHumanHand();
     renderTrickPile();
+  } else {
+    trickInfoElement.textContent = 'Invalid Play';
+    setTimeout(() => {
+      trickInfoElement.textContent = '';
+    }, 2000);
   }
 }
 
