@@ -14,7 +14,7 @@ export const gameState = {
   },
 
   passTurn() {
-    console.log(`Player ${this.activePlayerIndex} passed`);
+    console.log(`Player ${this.activePlayerIndex + 1} passed`);
     this.passCount++;
     if (this.passCount === 3) {
       console.log(`Player ${this.currentTrick.winnerIndex + 1} wins this turn`);
@@ -93,6 +93,36 @@ function sortHand(hand) {
     
     return b.suit.localeCompare(a.suit);
   })
+}
+
+export function findValidPlayForBot(botIndex) {
+  const hand = gameState.players[botIndex];
+  const currentTrick = gameState.currentTrick;
+
+  if (currentTrick.cards.length === 0) {
+    return [hand[0]];
+  }
+
+  const trickName = currentTrick.details.name;
+
+  if (trickName === 'Single') {
+    for (let i = 0; i < hand.length; i++) {
+      const testPlay = [hand[i]];
+      if (canBeat(testPlay, currentTrick.cards)) {
+        return testPlay;
+      }
+    }
+  }
+
+  if (trickName === 'Pair') {
+    for (let i = 0; i < hand.length - 1; i++) {
+      const testPlay = [hand[i], hand[i + 1]];
+      if (canBeat(testPlay, currentTrick.cards)) {
+        return testPlay;
+      }
+    }
+  }
+  return null;
 }
 
 initGame();

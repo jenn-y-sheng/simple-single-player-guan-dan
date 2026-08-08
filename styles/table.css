@@ -137,3 +137,17 @@ body {
   letter-spacing: 2px;
   text-transform: uppercase;
 }
+
+.pass-indicator {
+  position: absolute;
+  color: white;
+  font-weight: bold;
+  font-size: 20px;
+  letter-spacing: 2px;
+  pointer-events: none;
+}
+
+#player-bottom .pass-indicator { top: -20px; }
+#player-left .pass-indicator { right: -180px; }
+#player-right .pass-indicator { left: -180px; }
+#player-top .pass-indicator { top: 180px; }

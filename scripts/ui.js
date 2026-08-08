@@ -1,5 +1,5 @@
 import { evaluatePlay, canBeat } from "./comparison-logic.js";
-import { gameState } from "./game.js";
+import { gameState, findValidPlayForBot } from "./game.js";
 
 function getSvgFileName(card) {
   if (card.rank === 15) return 'black_joker.svg';
@@ -67,7 +67,10 @@ function renderOpponentHands() {
 
   opponents.forEach((opp) => {
     const container = document.getElementById(opp.id);
-    container.innerHTML = '';
+    const existingHand = container.querySelector(`.${opp.layoutClass}`);
+    if (existingHand) {
+      existingHand.remove();
+    }
 
     const handDiv = document.createElement('div');
     handDiv.classList.add(opp.layoutClass);
@@ -84,6 +87,22 @@ function renderOpponentHands() {
     }
     container.appendChild(handDiv);
   });
+}
+
+const playerContainers = ['player-bottom', 'player-right', 'player-top', 'player-left'];
+
+function showPassIndicator(playerIndex) {
+  const containerId = playerContainers[playerIndex];
+  const container = document.getElementById(containerId);
+
+  const indicator = document.createElement('div');
+  indicator.classList.add('pass-indicator');
+  indicator.textContent = 'PASS';
+  container.appendChild(indicator);
+}
+
+function clearPassIndicators() {
+  document.querySelectorAll('.pass-indicator').forEach(el => el.remove());
 }
 
 function handlePlayCards() {
@@ -106,8 +125,12 @@ function handlePlayCards() {
 
     document.querySelectorAll('.card.staged').forEach(card => card.classList.remove('staged'));
 
+    clearPassIndicators();
+
     renderHumanHand();
     renderTrickPile();
+
+    executeOpponentTurn();
   } else {
     const lastTrick = trickInfoElement.textContent;
     trickInfoElement.textContent = 'Invalid Play';
@@ -141,11 +164,48 @@ function handlePass() {
   gameState.passTurn();
 
   document.querySelectorAll('.card.staged').forEach(card => card.classList.remove('staged'));
+
+  showPassIndicator(0);
+
+  executeOpponentTurn();
+}
+
+function executeOpponentTurn() {
+  if (gameState.activePlayerIndex === 0) {
+    if (gameState.currentTrick.cards.length === 0) {
+      setTimeout(() => {
+        clearPassIndicators();
+        document.getElementById('trick-pile').innerHTML = '';
+        document.getElementById('trick-info').textContent = '';
+      }, 1000);
+    }
+    return;
+  }
+  const botIndex = gameState.activePlayerIndex;
+  setTimeout(() => {
+    const cardsToPlay = findValidPlayForBot(botIndex);
+
+    if (cardsToPlay) {
+      gameState.playCards(cardsToPlay);
+      clearPassIndicators();
+      gameState.trickPile = [...cardsToPlay];
+      document.getElementById('trick-info').textContent = gameState.currentTrick.details.name;
+
+      renderOpponentHands();
+      renderTrickPile();
+    } else {
+      gameState.passTurn();
+      renderOpponentHands();
+      showPassIndicator(botIndex);
+    }
+    executeOpponentTurn();
+  }, 1000);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   renderHumanHand();
   renderOpponentHands();
+  executeOpponentTurn();
 });
 
 document.getElementById('button-play').addEventListener('click', () => {
