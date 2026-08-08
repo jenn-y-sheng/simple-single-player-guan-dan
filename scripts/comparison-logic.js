@@ -375,7 +375,7 @@ export function evalBomb(cards) {
 export function evaluatePlay(cards) {
   const bomb = evalBomb(cards);
   if (bomb) {
-    return bomb
+    return bomb;
   }
 
   return evalSingle(cards)

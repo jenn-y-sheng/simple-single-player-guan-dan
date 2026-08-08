@@ -1,3 +1,4 @@
+import { evaluatePlay } from "./comparison-logic.js";
 import { gameState } from "./game.js";
 
 function getSvgFileName(card) {
@@ -87,23 +88,29 @@ function renderOpponentHands() {
 
 function handlePlayCards() {
   const stagedCards = document.querySelectorAll('.card.staged');
-  if (!stagedCards) {
+  if (stagedCards.length === 0) {
     return;
   }
+  const stagedIndices = Array.from(stagedCards)
+    .map(card => parseInt(card.dataset.index));
+  const actualCardsToPlay = stagedIndices.map(index => gameState.players[0][index]);
 
-  const indicesToRemove = Array.from(stagedCards)
-    .map(card => parseInt(card.dataset.index))
-    .sort((a, b) => b - a);
+  const playClass = evaluatePlay(actualCardsToPlay);
+  console.log(playClass);
 
-  gameState.trickPile = [];
+  if (playClass) {
+    const indicesToRemove = stagedIndices.sort((a, b) => b - a);
 
-  indicesToRemove.forEach(index => {
-    const playedCard = gameState.players[0].splice(index, 1)[0];
-    gameState.trickPile.unshift(playedCard);
-  });
+    gameState.trickPile = [];
 
-  renderHumanHand();
-  renderTrickPile();
+    indicesToRemove.forEach(index => {
+      const playedCard = gameState.players[0].splice(index, 1)[0];
+      gameState.trickPile.unshift(playedCard);
+    });
+
+    renderHumanHand();
+    renderTrickPile();
+  }
 }
 
 function renderTrickPile() {
