@@ -60,3 +60,10 @@
   margin-left: 0;
   margin-top: -100px;
 }
+
+.played-card {
+  margin-left: 0;
+  margin-top: 0;
+  cursor: default;
+  pointer-events: none;
+}

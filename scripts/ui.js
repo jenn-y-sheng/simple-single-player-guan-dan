@@ -85,7 +85,48 @@ function renderOpponentHands() {
   });
 }
 
+function handlePlayCards() {
+  const stagedCards = document.querySelectorAll('.card.staged');
+  if (!stagedCards) {
+    return;
+  }
+
+  const indicesToRemove = Array.from(stagedCards)
+    .map(card => parseInt(card.dataset.index))
+    .sort((a, b) => b - a);
+
+  gameState.trickPile = [];
+
+  indicesToRemove.forEach(index => {
+    const playedCard = gameState.players[0].splice(index, 1)[0];
+    gameState.trickPile.unshift(playedCard);
+  });
+
+  renderHumanHand();
+  renderTrickPile();
+}
+
+function renderTrickPile() {
+  const trickContainer = document.getElementById('trick-pile');
+  trickContainer.innerHTML = '';
+
+  gameState.trickPile.forEach(card => {
+    const cardElement = document.createElement('div');
+    cardElement.classList.add('card');
+    cardElement.classList.add('played-card');
+
+    const svgName = getSvgFileName(card);
+    cardElement.style.backgroundImage = `url('../images/SVG-cards-1.3/${svgName}')`;
+
+    trickContainer.appendChild(cardElement);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   renderHumanHand();
   renderOpponentHands();
+});
+
+document.getElementById('button-play').addEventListener('click', () => {
+  handlePlayCards();
 });

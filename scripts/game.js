@@ -3,6 +3,7 @@ import { generateDeck, fisherYatesShuffle } from "./deck.js";
 
 export const gameState = {
   players: [[], [], [], []],
+  trickPile: [],
   activePlayerIndex: 0,
   passCount: 0,
 
@@ -96,11 +97,11 @@ function sortHand(hand) {
 
 initGame();
 
-const p1Lead = [gameState.players[0][0]]; 
-gameState.playCards(p1Lead);
-console.log("Current Table:", gameState.currentTrick);
-gameState.passTurn();
-gameState.passTurn();
-gameState.passTurn();
-console.log("Next to act:", gameState.activePlayerIndex);
-console.log("Current Table:", gameState.currentTrick.cards);
+// const p1Lead = [gameState.players[0][0]]; 
+// gameState.playCards(p1Lead);
+// console.log("Current Table:", gameState.currentTrick);
+// gameState.passTurn();
+// gameState.passTurn();
+// gameState.passTurn();
+// console.log("Next to act:", gameState.activePlayerIndex);
+// console.log("Current Table:", gameState.currentTrick.cards);

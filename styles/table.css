@@ -20,11 +20,15 @@ body {
 #player-top { grid-area: top; }
 #player-left { grid-area: left; }
 #player-right { grid-area: right; }
-#center-table { grid-area: center; }
+#center-table { 
+  grid-area: center; 
+  display: flex;
+  justify-content: center;
+}
 #player-bottom { 
   grid-area: bottom;
   align-items: flex-end;
-  padding-bottom: 20px;
+  padding-bottom: 50px;
 }
 
 .player-area {
@@ -114,4 +118,11 @@ body {
 
 .action-button:hover {
   background-color: #f39c12;
+}
+
+#trick-pile {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-bottom: 100px;
 }
