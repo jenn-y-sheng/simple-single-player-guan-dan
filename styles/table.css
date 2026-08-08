@@ -130,7 +130,8 @@ body {
   padding-top: -100px;
 }
 
-#trick-info {
+#trick-info,
+#trick-player {
   color: white;
   font-size: 24px;
   font-weight: bold;
@@ -147,7 +148,7 @@ body {
   pointer-events: none;
 }
 
-#player-bottom .pass-indicator { top: -20px; }
+#player-bottom .pass-indicator { top: -120px; }
 #player-left .pass-indicator { right: -180px; }
 #player-right .pass-indicator { left: -180px; }
 #player-top .pass-indicator { top: 180px; }

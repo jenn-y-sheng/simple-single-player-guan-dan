@@ -1,6 +1,8 @@
 import { evaluatePlay, canBeat } from "./comparison-logic.js";
 import { gameState, findValidPlayForBot } from "./game.js";
 
+const PLAYER_NAMES = ['You', 'Player 2', 'Player 3', 'Player 4'];
+
 function getSvgFileName(card) {
   if (card.rank === 15) return 'black_joker.svg';
   if (card.rank === 16) return 'red_joker.svg';
@@ -119,9 +121,11 @@ function handlePlayCards() {
   const trickInfoElement = document.getElementById('trick-info');
 
   if (isSuccess) {
-    gameState.trickPile = [...actualCardsToPlay];
+    const trickPlayerElement = document.getElementById('trick-player');
 
+    gameState.trickPile = [...actualCardsToPlay];
     trickInfoElement.textContent = gameState.currentTrick.details.name;
+    trickPlayerElement.textContent = PLAYER_NAMES[gameState.currentTrick.winnerIndex];
 
     document.querySelectorAll('.card.staged').forEach(card => card.classList.remove('staged'));
 
@@ -177,6 +181,7 @@ function executeOpponentTurn() {
         clearPassIndicators();
         document.getElementById('trick-pile').innerHTML = '';
         document.getElementById('trick-info').textContent = '';
+        document.getElementById('trick-player').textContent = '';
       }, 1000);
     }
     return;
@@ -189,6 +194,10 @@ function executeOpponentTurn() {
       gameState.playCards(cardsToPlay);
       clearPassIndicators();
       gameState.trickPile = [...cardsToPlay];
+
+      const trickPlayerElement = document.getElementById('trick-player');
+      trickPlayerElement.textContent = PLAYER_NAMES[gameState.currentTrick.winnerIndex];
+
       document.getElementById('trick-info').textContent = gameState.currentTrick.details.name;
 
       renderOpponentHands();
@@ -199,7 +208,7 @@ function executeOpponentTurn() {
       showPassIndicator(botIndex);
     }
     executeOpponentTurn();
-  }, 1000);
+  }, 1500);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
