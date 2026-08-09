@@ -89,6 +89,7 @@ function renderOpponentHands() {
     }
     container.appendChild(handDiv);
   });
+  renderCardCounts();
 }
 
 const playerContainers = ['player-bottom', 'player-right', 'player-top', 'player-left'];
@@ -210,6 +211,41 @@ function executeOpponentTurn() {
     executeOpponentTurn();
   }, 1500);
 }
+
+function renderCardCounts() {
+  const counts = [
+    { id: 'count-right', index: 1 },
+    { id: 'count-top', index: 2 },
+    { id: 'count-left', index: 3 }
+  ];
+
+  counts.forEach(player => {
+    const el = document.getElementById(player.id);
+    if (el) {
+      el.textContent = `${gameState.players[player.index].length}`;
+    }
+  });
+}
+
+function fixRowStarts(container) {
+  const cards = Array.from(container.children);
+  let lastTop = null;
+
+  cards.forEach(card => {
+    const top = card.offsetTop;
+    if (top !== lastTop) {
+      card.classList.add('row-start');
+    } else {
+      card.classList.remove('row-start');
+    }
+    lastTop = top;
+  });
+}
+
+window.addEventListener('resize', () => {
+  fixRowStarts(document.getElementById('hand-container'));
+  fixRowStarts(document.querySelector('.horizontal-hand'));
+});
 
 document.addEventListener('DOMContentLoaded', () => {
   renderHumanHand();

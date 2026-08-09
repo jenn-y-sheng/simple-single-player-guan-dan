@@ -118,19 +118,23 @@ export function findValidPlayForBot(botIndex) {
   const trickName = currentTrick.details.name;
 
   if (trickName === 'Single') {
-    return findPlayOfSize(hand, currentTrick.cards, rankCounts, 1);
+    return findPlayOfSize(hand, rankCounts, 1);
   }
   if (trickName === 'Pair') {
-    return findPlayOfSize(hand, currentTrick.cards, rankCounts, 2);
+    return findPlayOfSize(hand, rankCounts, 2);
   }
   if (trickName === 'Triple') {
-    return findPlayOfSize(hand, currentTrick.cards, rankCounts, 3);
+    return findPlayOfSize(hand, rankCounts, 3);
+  }
+  if(trickName === 'Full-House') {
+    return findFullHouse(hand, rankCounts);
   }
   return null;
 }
 
-function findPlayOfSize(hand, currentTrickCards, rankCounts, playSize) {
+function findPlayOfSize(hand, rankCounts, playSize) {
   const cardsByRank = {};
+  const currentTrickCards = gameState.currentTrick.cards;
   hand.forEach(card => {
     if (!cardsByRank[card.rank]) cardsByRank[card.rank] = [];
     cardsByRank[card.rank].push(card);
@@ -145,6 +149,41 @@ function findPlayOfSize(hand, currentTrickCards, rankCounts, playSize) {
         const testPlay = cardsByRank[rank].slice(0, playSize);
         if (canBeat(testPlay, currentTrickCards)) {
           return testPlay;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function findFullHouse(hand, rankCounts) {
+  const cardsByRank = {};
+  const currentTrickCards = gameState.currentTrick.cards;
+  hand.forEach(card => {
+    if (!cardsByRank[card.rank]) cardsByRank[card.rank] = [];
+    cardsByRank[card.rank].push(card);
+  });
+
+  const uniqueRanks = [...new Set(hand.map(card => card.rank))];
+  let candidateTriple;
+  let candidatePair;
+  let testPlay;
+
+  for (const tripleRank of uniqueRanks) {
+    const tripleCount = rankCounts[tripleRank];
+    if (tripleCount >= 3) {
+      candidateTriple = cardsByRank[tripleRank].slice(0, 3);
+      for (const pairRank of uniqueRanks) {
+        if (pairRank === tripleRank) {
+          continue;
+        }
+        const pairCount = rankCounts[pairRank];
+        if (pairCount >= 2) {
+          candidatePair = cardsByRank[pairRank].slice(0, 2);
+          testPlay = [...candidateTriple, ...candidatePair];
+          if (canBeat(testPlay, currentTrickCards)) {
+            return testPlay;
+          }
         }
       }
     }

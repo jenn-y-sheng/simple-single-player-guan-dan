@@ -13,10 +13,6 @@
   transition: top 0.1s ease-out;
 }
 
-.card:first-child {
-  margin-left: 0;
-}
-
 .card-back {
   width: 80px;
   height: 120px;
@@ -30,7 +26,7 @@
   margin-top: -80px;
 }
 
-.horizontal-hand .card-back:first-child {
+.card.row-start {
   margin-left: 0;
 }
 

@@ -64,7 +64,8 @@ body {
   justify-content: center;
   flex-wrap: wrap;
   margin-top: 100px;
-  width: 100%
+  width: 100%;
+  margin-left: 40px;
 }
 
 .vertical-hand-right {
@@ -149,6 +150,18 @@ body {
 }
 
 #player-bottom .pass-indicator { top: -120px; }
-#player-left .pass-indicator { right: -180px; }
-#player-right .pass-indicator { left: -180px; }
+#player-left .pass-indicator { right: -100px; }
+#player-right .pass-indicator { left: -100px; }
 #player-top .pass-indicator { top: 180px; }
+
+.card-count {
+  position: absolute;
+  z-index: 20;
+  font-size: 30px;
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: 10px;
+  color: white;
+  padding: 10px 20px;
+}
+
+#player-top .card-count { bottom: 35px; }
