@@ -126,8 +126,17 @@ export function findValidPlayForBot(botIndex) {
   if (trickName === 'Triple') {
     return findPlayOfSize(hand, rankCounts, 3);
   }
-  if(trickName === 'Full-House') {
+  if (trickName === 'Full-House') {
     return findFullHouse(hand, rankCounts);
+  }
+  if (trickName === 'Straight') {
+    return findSequencePlay(hand, 5, 1);
+  }
+  if (trickName === 'Tube') {
+    return findSequencePlay(hand, 3, 2);
+  }
+  if (trickName === 'Plate') {
+    return findSequencePlay(hand, 2, 3);
   }
   return null;
 }
@@ -186,6 +195,40 @@ function findFullHouse(hand, rankCounts) {
           }
         }
       }
+    }
+  }
+  return null;
+}
+
+function findSequencePlay(hand, seqLength, groupSize) {
+  const cardsByRank = {};
+  const currentTrickCards = gameState.currentTrick.cards;
+  hand.forEach(card => {
+    if (!cardsByRank[card.rank]) cardsByRank[card.rank] = [];
+    cardsByRank[card.rank].push(card);
+  });
+
+  if (cardsByRank[14]) {
+    cardsByRank[1] = cardsByRank[14];
+  }
+
+  const maxStartRank = 14 - seqLength + 1;
+
+  for (let startRank = 1; startRank <= maxStartRank; startRank++) {
+    let validSequence = true;
+    let testPlay = [];
+
+    for (let offset = 0; offset < seqLength; offset++) {
+      const currentRank = startRank + offset;
+      if (cardsByRank[currentRank] && cardsByRank[currentRank].length >= groupSize) {
+        testPlay.push(...cardsByRank[currentRank].slice(0, groupSize));
+      } else {
+        validSequence = false;
+        break;
+      }
+    }
+    if (validSequence && canBeat(testPlay, currentTrickCards)) {
+      return testPlay;
     }
   }
   return null;
