@@ -99,26 +99,53 @@ export function findValidPlayForBot(botIndex) {
   const hand = gameState.players[botIndex];
   const currentTrick = gameState.currentTrick;
 
+  const rankCounts = {};
+  hand.forEach(card => {
+    rankCounts[card.rank] = (rankCounts[card.rank] || 0) + 1;
+  })
+
   if (currentTrick.cards.length === 0) {
+    // tries to look for lowest singleton card to play
+    for (let i = 0; i < hand.length; i++) {
+      if (rankCounts[hand[i].rank] === 1) {
+        return [hand[i]];
+      }
+    }
+    // if no singletons, play lowest card
     return [hand[0]];
   }
 
   const trickName = currentTrick.details.name;
 
   if (trickName === 'Single') {
-    for (let i = 0; i < hand.length; i++) {
-      const testPlay = [hand[i]];
-      if (canBeat(testPlay, currentTrick.cards)) {
-        return testPlay;
-      }
-    }
+    return findPlayOfSize(hand, currentTrick.cards, rankCounts, 1);
   }
-
   if (trickName === 'Pair') {
-    for (let i = 0; i < hand.length - 1; i++) {
-      const testPlay = [hand[i], hand[i + 1]];
-      if (canBeat(testPlay, currentTrick.cards)) {
-        return testPlay;
+    return findPlayOfSize(hand, currentTrick.cards, rankCounts, 2);
+  }
+  if (trickName === 'Triple') {
+    return findPlayOfSize(hand, currentTrick.cards, rankCounts, 3);
+  }
+  return null;
+}
+
+function findPlayOfSize(hand, currentTrickCards, rankCounts, playSize) {
+  const cardsByRank = {};
+  hand.forEach(card => {
+    if (!cardsByRank[card.rank]) cardsByRank[card.rank] = [];
+    cardsByRank[card.rank].push(card);
+  });
+
+  const uniqueRanks = [...new Set(hand.map(card => card.rank))];
+
+  for (let targetCount = playSize; targetCount <= 4; targetCount++) {
+    for (const rank of uniqueRanks) {
+      const count = rankCounts[rank];
+      if (count === targetCount || (targetCount === 4 && count >= 4)) {
+        const testPlay = cardsByRank[rank].slice(0, playSize);
+        if (canBeat(testPlay, currentTrickCards)) {
+          return testPlay;
+        }
       }
     }
   }
