@@ -68,6 +68,9 @@ function initGame() {
 
   dealCards(deck);
   console.log("Player 1 Hand: ", gameState.players[0]);
+  console.log("Player 2 Hand: ", gameState.players[1]);
+  console.log("Player 3 Hand: ", gameState.players[2]);
+  console.log("Player 4 Hand: ", gameState.players[3]);
 }
 
 function dealCards(deck) {
@@ -130,34 +133,46 @@ export function findValidPlayForBot(botIndex) {
     return findFullHouse(hand, rankCounts);
   }
   if (trickName === 'Straight') {
-    return findSequencePlay(hand, 5, 1);
+    return findSequencePlay(hand, rankCounts, 5, 1);
   }
   if (trickName === 'Tube') {
-    return findSequencePlay(hand, 3, 2);
+    return findSequencePlay(hand, rankCounts, 3, 2);
   }
   if (trickName === 'Plate') {
-    return findSequencePlay(hand, 2, 3);
+    return findSequencePlay(hand, rankCounts, 2, 3);
   }
   return null;
 }
 
 function findPlayOfSize(hand, rankCounts, playSize) {
+  const wilds = hand.filter(c => c.rank === currentLevel && c.suit === 'H');
+  const naturals = hand.filter(c => !(c.rank === currentLevel && c.suit === 'H'));
+
   const cardsByRank = {};
   const currentTrickCards = gameState.currentTrick.cards;
-  hand.forEach(card => {
+  naturals.forEach(card => {
     if (!cardsByRank[card.rank]) cardsByRank[card.rank] = [];
     cardsByRank[card.rank].push(card);
   });
 
   const uniqueRanks = [...new Set(hand.map(card => card.rank))];
 
-  for (let targetCount = playSize; targetCount <= 4; targetCount++) {
-    for (const rank of uniqueRanks) {
-      const count = rankCounts[rank];
-      if (count === targetCount || (targetCount === 4 && count >= 4)) {
-        const testPlay = cardsByRank[rank].slice(0, playSize);
-        if (canBeat(testPlay, currentTrickCards)) {
-          return testPlay;
+  for (let wildsToSpend = 0; wildsToSpend <= wilds.length; wildsToSpend++) {
+    const requiredNaturals = playSize - wildsToSpend;
+    if (requiredNaturals < 0) {
+      continue;
+    }
+    for (let targetCount = playSize; targetCount <= 4; targetCount++) {
+      for (const rank of uniqueRanks) {
+        const count = rankCounts[rank];
+        if (count === targetCount || (targetCount === 4 && count >= 4)) {
+          const testPlay = [
+            ...cardsByRank[rank].slice(0, requiredNaturals),
+            ...wilds.slice(0, wildsToSpend)
+          ];
+          if (canBeat(testPlay, currentTrickCards)) {
+            return testPlay;
+          }
         }
       }
     }
@@ -178,20 +193,28 @@ function findFullHouse(hand, rankCounts) {
   let candidatePair;
   let testPlay;
 
-  for (const tripleRank of uniqueRanks) {
-    const tripleCount = rankCounts[tripleRank];
-    if (tripleCount >= 3) {
-      candidateTriple = cardsByRank[tripleRank].slice(0, 3);
-      for (const pairRank of uniqueRanks) {
-        if (pairRank === tripleRank) {
-          continue;
-        }
-        const pairCount = rankCounts[pairRank];
-        if (pairCount >= 2) {
-          candidatePair = cardsByRank[pairRank].slice(0, 2);
-          testPlay = [...candidateTriple, ...candidatePair];
-          if (canBeat(testPlay, currentTrickCards)) {
-            return testPlay;
+  // try to look for exact groups of 3 before breaking up bombs (at least 4 of a kind)
+  for (let tripleTarget = 3; tripleTarget <= 4; tripleTarget++) {
+    for (const tripleRank of uniqueRanks) {
+      const tripleCount = rankCounts[tripleRank];
+
+      if (tripleCount === tripleTarget || (tripleTarget === 4 && tripleCount >= 4)) {
+        candidateTriple = cardsByRank[tripleRank].slice(0, 3);
+
+        // try to look for groups of 2, then 3, then 4
+        for (let pairTarget = 2; pair <= 4; pairTarget++) {
+          for (const pairRank of uniqueRanks) {
+            if (pairRank === tripleRank) {
+              continue;
+            }
+            const pairCount = rankCounts[pairRank];
+            if (pairCount === pairTarget || (pairTarget === 4 && pairCount >= 4)) {
+              candidatePair = cardsByRank[pairRank].slice(0, 2);
+              testPlay = [...candidateTriple, ...candidatePair];
+              if (canBeat(testPlay, currentTrickCards)) {
+                return testPlay;
+              }
+            }
           }
         }
       }
@@ -200,7 +223,7 @@ function findFullHouse(hand, rankCounts) {
   return null;
 }
 
-function findSequencePlay(hand, seqLength, groupSize) {
+function findSequencePlay(hand, rankCounts, seqLength, groupSize) {
   const cardsByRank = {};
   const currentTrickCards = gameState.currentTrick.cards;
   hand.forEach(card => {
@@ -210,27 +233,40 @@ function findSequencePlay(hand, seqLength, groupSize) {
 
   if (cardsByRank[14]) {
     cardsByRank[1] = cardsByRank[14];
+    rankCounts[1] = rankCounts[14];
   }
 
   const maxStartRank = 14 - seqLength + 1;
 
-  for (let startRank = 1; startRank <= maxStartRank; startRank++) {
-    let validSequence = true;
-    let testPlay = [];
+  for (let maxAllowedCount = groupSize; maxAllowedCount <= 4; maxAllowedCount++) {
+    for (let startRank = 1; startRank <= maxStartRank; startRank++) {
+      let validSequence = true;
+      let testPlay = [];
 
-    for (let offset = 0; offset < seqLength; offset++) {
-      const currentRank = startRank + offset;
-      if (cardsByRank[currentRank] && cardsByRank[currentRank].length >= groupSize) {
+      for (let offset = 0; offset < seqLength; offset++) {
+        const currentRank = startRank + offset;
+        const count = rank[currentRank];
+
+        // are there enough cards for the group size
+        if (!cardsByRank[currentRank] || cardsByRank[currentRank].length < groupSize) {
+          validSequence = false;
+          break;
+        }
+
+        // is this group count larger that the maxAllowedCount we are allowed to break apart
+        if (count > maxAllowedCount && maxAllowedCount < 4) {
+          validSequence = false;
+          break;
+        }
+
         testPlay.push(...cardsByRank[currentRank].slice(0, groupSize));
-      } else {
-        validSequence = false;
-        break;
+      }
+      if (validSequence && canBeat(testPlay, currentTrickCards)) {
+        return testPlay;
       }
     }
-    if (validSequence && canBeat(testPlay, currentTrickCards)) {
-      return testPlay;
-    }
   }
+
   return null;
 }
 
