@@ -1,4 +1,4 @@
-import { currentLevel, evaluatePlay, canBeat } from "./comparison-logic.js";
+import { currentLevel, evaluatePlay, canBeat, rankStrength } from "./comparison-logic.js";
 import { generateDeck, fisherYatesShuffle } from "./deck.js";
 
 export const gameState = {
@@ -109,6 +109,11 @@ export function findValidPlayForBot(botIndex) {
 
   if (currentTrick.cards.length === 0) {
     return findLeadPlay(hand);
+  }
+
+  // don't sabotage partners unless there's a good reason
+  if (isPartnerInControl(botIndex) && !shouldOverridePartner(botIndex, hand)) {
+    return null;
   }
 
   const trickName = currentTrick.details.name;
@@ -252,7 +257,7 @@ function getCandidateGroups(uniqueRanks, cardsByRank, rankCounts, requiredNatura
     });
   }
 
-  candidates.sort((a, b) => a.leftoverCost - b.leftoverCost || a.rank - b.rank);
+  candidates.sort((a, b) => a.leftoverCost - b.leftoverCost || rankStrength(a.rank) - rankStrength(b.rank));
 
   // for (let targetCount = requiredNaturals; targetCount <= 4; targetCount++) {
   //   if (requiredNaturals > 0 && targetCount === 0) continue; 
@@ -527,9 +532,12 @@ function findJokerBomb(hand) {
 
 function shouldUseBomb(botIndex) {
   const hand = gameState.players[botIndex];
-  const winnderIndex = gameState.currentTrick.winnerIndex;
-  const winnerHand = gameState.players[winnderIndex];
+  const winnerIndex = gameState.currentTrick.winnerIndex;
+  const winnerHand = gameState.players[winnerIndex];
 
+  if (winnerIndex === getPartnerIndex(botIndex)) {
+    return false;
+  }
   // the player who put the current trick is close to winning
   if (winnerHand.length <= 3) {
     return true;
@@ -541,6 +549,28 @@ function shouldUseBomb(botIndex) {
 
   const willingness = 1 - hand.length / 27;
   return Math.random() < willingness * 0.4;
+}
+
+function getPartnerIndex(botIndex) {
+  return (botIndex + 2) % 4;
+}
+
+function isPartnerInControl(botIndex) {
+  const winnerIndex = gameState.currentTrick.winnerIndex;
+  return winnerIndex !== null && winnerIndex === getPartnerIndex(botIndex);
+}
+
+function shouldOverridePartner(botIndex, hand) {
+  const partnerIndex = getPartnerIndex(botIndex);
+  const partnerHandLength = gameState.players[partnerIndex].length;
+
+  if (partnerHandLength === 1) {
+    return false;
+  }
+  if (hand.length <= 2) {
+    return true;
+  }
+  return false;
 }
 
 initGame();

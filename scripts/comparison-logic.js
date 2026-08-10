@@ -8,7 +8,7 @@
 
 export let currentLevel = 2;
 
-function rankStrength(rank) {
+export function rankStrength(rank) {
   if (rank >= 15) return 100 + rank;
   if (rank === currentLevel) return 99;
   return rank;
