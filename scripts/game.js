@@ -120,19 +120,19 @@ export function findValidPlayForBot(botIndex) {
   let standardPlay;
 
   if (trickName === 'Single') {
-    standardPlay = findPlayOfSize(hand, 1);
+    standardPlay = tryContestPlayOfSize(hand, 1);
   } else if (trickName === 'Pair') {
-    standardPlay = findPlayOfSize(hand, 2);
+    standardPlay = tryContestPlayOfSize(hand, 2);
   } else if (trickName === 'Triple') {
-    standardPlay = findPlayOfSize(hand, 3);
+    standardPlay = tryContestPlayOfSize(hand, 3);
   } else if (trickName === 'Full-House') {
-    standardPlay = findFullHouse(hand);
+    standardPlay = tryContestFullHouse(hand);
   } else if (trickName === 'Straight') {
-    standardPlay = findSequencePlay(hand, 5, 1);
+    standardPlay = tryContestSequence(hand, 5, 1, botIndex);
   } else if (trickName === 'Tube') {
-    standardPlay = findSequencePlay(hand, 3, 2);
+    standardPlay = tryContestSequence(hand, 3, 2, botIndex);
   } else if (trickName === 'Plate') {
-    standardPlay = findSequencePlay(hand, 2, 3);
+    standardPlay = tryContestSequence(hand, 2, 3, botIndex);
   }
   if (standardPlay) {
     return standardPlay;
@@ -304,11 +304,25 @@ function findPlayOfSize(hand, playSize) {
     for (const candidate of candidates) {
       const testPlay = [...candidate.cards, ...wilds.slice(0, wildsToSpend)];
       if (canBeat(testPlay, currentTrickCards)) {
-        return testPlay;
+        return {
+          cards: testPlay,
+          leftoverCost: candidate.leftoverCost
+        };
       }
     }
   }
   return null;
+}
+
+function tryContestPlayOfSize(hand, playSize) {
+  const result = findPlayOfSize(hand, playSize);
+  if (!result) return null;
+
+  if (result.leftoverCost > 0 && gameState.players[gameState.currentTrick.winnerIndex].length > 5) {
+    return null;
+  }
+
+  return result.cards;
 }
 
 function findFullHouse(hand) {
@@ -345,12 +359,38 @@ function findFullHouse(hand) {
             ...wilds.slice(0, wildsToSpend)
           ];
           if (canBeat(testPlay, currentTrickCards)) {
-            return testPlay
+            return {
+              cards: testPlay,
+              wildsUsed: wildsToSpend,
+              leftoverCost: triple.leftoverCost + pair.leftoverCost
+            }
           }
         }
       }
     }
   }
+  return null;
+}
+
+function tryContestFullHouse(hand) {
+  const result = findFullHouse(hand);
+  if (!result) return null;
+
+  const winnerIndex = gameState.currentTrick.winnerIndex;
+  const winnerHandLength = gameState.players[winnerIndex].length;
+
+  if (result.wildsUsed === 0 && result.leftoverCost === 0) {
+    return result.cards;
+  }
+
+  if (winnerHandLength <= 4) {
+    return result.cards;
+  }
+
+  if (hand.length <= 6) {
+    return result.cards;
+  }
+
   return null;
 }
 
@@ -380,6 +420,7 @@ function findSequencePlay(hand, seqLength, groupSize) {
         let validSequence = true;
         let testPlay = [];
         let currentWildsNeeded = 0;
+        let leftoverCost = 0;
 
         for (let offset = 0; offset < seqLength; offset++) {
           const currentRank = startRank + offset;
@@ -401,16 +442,39 @@ function findSequencePlay(hand, seqLength, groupSize) {
           if (count > 0) {
             const cardsToTake = groupSize - missingCards;
             testPlay.push(...cardsByRank[currentRank].slice(0, cardsToTake));
+            leftoverCost += Math.max(0, count - cardsToTake);
           }
         }
         if (validSequence && currentWildsNeeded === wildsToSpend) {
           testPlay.push(...wilds.slice(0, wildsToSpend));
           if (canBeat(testPlay, currentTrickCards)) {
-            return testPlay;
+            return { cards: testPlay, wildsUsed: wildsToSpend, leftoverCost };
           }
         }
       }
     }
+  }
+
+  return null;
+}
+
+function tryContestSequence(hand, seqLength, groupSize, botIndex) {
+  const result = findSequencePlay(hand, seqLength, groupSize);
+  if (!result) return null;
+
+  const winnerIndex = gameState.currentTrick.winnerIndex;
+  const winnerHand = gameState.players[winnerIndex];
+
+  if (result.wildsUsed === 0 && result.leftoverCost === 0) {
+    return result.cards;
+  }
+
+  if (winnerHand.length <= 4) {
+    return result.cards;
+  }
+
+  if (hand.length <= 6) {
+    return result.cards;
   }
 
   return null;
@@ -535,19 +599,30 @@ function shouldUseBomb(botIndex) {
   const winnerIndex = gameState.currentTrick.winnerIndex;
   const winnerHand = gameState.players[winnerIndex];
 
+  // don't bomb your partner
   if (winnerIndex === getPartnerIndex(botIndex)) {
     return false;
   }
+
+  const opponentPlayedBomb = gameState.currentTrick.details.tier !== undefined;
+
   // the player who put the current trick is close to winning
-  if (winnerHand.length <= 3) {
+  if (winnerHand.length <= 10) {
     return true;
   }
   // this bot is close to winning
-  if (hand.length <= 5) {
+  if (hand.length <= 10) {
     return true;
   }
 
-  const willingness = 1 - hand.length / 27;
+  let willingness;
+
+  if (opponentPlayedBomb) {
+    willingness = 1 - hand.length / 27;
+    return Math.random() < willingness * 0.75;
+  }
+
+  willingness = 1 - hand.length / 27;
   return Math.random() < willingness * 0.4;
 }
 
