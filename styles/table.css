@@ -149,7 +149,7 @@ body {
   pointer-events: none;
 }
 
-#player-bottom .pass-indicator { top: -120px; }
+#player-bottom .pass-indicator { top: -150px; }
 #player-left .pass-indicator { right: -100px; }
 #player-right .pass-indicator { left: -100px; }
 #player-top .pass-indicator { top: 180px; }

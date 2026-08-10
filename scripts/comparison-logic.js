@@ -395,7 +395,7 @@ export function evaluatePlay(cards) {
 
 function compareRanks(attemptedRank, currentRank, playType) {
   // sequences ignore strong level cards
-  if (['Straight', 'Tube', 'Plate'].includes(playType)) {
+  if (['Straight', 'Tube', 'Plate', 'Straight-Flush Bomb'].includes(playType)) {
     return attemptedRank > currentRank;
   }
 

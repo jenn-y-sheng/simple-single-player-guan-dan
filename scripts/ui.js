@@ -57,7 +57,8 @@ function renderHumanHand() {
     });
 
     handContainer.appendChild(cardElement);
-  })
+  });
+  renderCardCounts();
 }
 
 function renderOpponentHands() {
@@ -209,7 +210,7 @@ function executeOpponentTurn() {
       showPassIndicator(botIndex);
     }
     executeOpponentTurn();
-  }, 1500);
+  }, 2000);
 }
 
 function renderCardCounts() {

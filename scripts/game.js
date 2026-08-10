@@ -41,7 +41,7 @@ export const gameState = {
       }
     }
 
-    console.log(`Player ${this.activePlayerIndex + 1} played a ${playDetails.name}`);
+    console.log(`Player ${this.activePlayerIndex + 1} played a ${playDetails.name} of rank ${playDetails.topRank}`);
 
     this.currentTrick = {
       cards: cards,
@@ -108,81 +108,187 @@ export function findValidPlayForBot(botIndex) {
   })
 
   if (currentTrick.cards.length === 0) {
-    // tries to look for lowest singleton card to play
-    for (let i = 0; i < hand.length; i++) {
-      if (rankCounts[hand[i].rank] === 1) {
-        return [hand[i]];
-      }
-    }
-    // if no singletons, play lowest card
-    return [hand[0]];
+    return findLeadPlay(hand);
   }
 
   const trickName = currentTrick.details.name;
+  let standardPlay;
 
   if (trickName === 'Single') {
-    return findPlayOfSize(hand, rankCounts, 1);
+    standardPlay = findPlayOfSize(hand, 1);
+  } else if (trickName === 'Pair') {
+    standardPlay = findPlayOfSize(hand, 2);
+  } else if (trickName === 'Triple') {
+    standardPlay = findPlayOfSize(hand, 3);
+  } else if (trickName === 'Full-House') {
+    standardPlay = findFullHouse(hand);
+  } else if (trickName === 'Straight') {
+    standardPlay = findSequencePlay(hand, 5, 1);
+  } else if (trickName === 'Tube') {
+    standardPlay = findSequencePlay(hand, 3, 2);
+  } else if (trickName === 'Plate') {
+    standardPlay = findSequencePlay(hand, 2, 3);
   }
-  if (trickName === 'Pair') {
-    return findPlayOfSize(hand, rankCounts, 2);
+  if (standardPlay) {
+    return standardPlay;
   }
-  if (trickName === 'Triple') {
-    return findPlayOfSize(hand, rankCounts, 3);
-  }
-  if (trickName === 'Full-House') {
-    return findFullHouse(hand, rankCounts);
-  }
-  if (trickName === 'Straight') {
-    return findSequencePlay(hand, rankCounts, 5, 1);
-  }
-  if (trickName === 'Tube') {
-    return findSequencePlay(hand, rankCounts, 3, 2);
-  }
-  if (trickName === 'Plate') {
-    return findSequencePlay(hand, rankCounts, 2, 3);
+
+  if (shouldUseBomb(botIndex)) {
+    return findBomb(hand);
   }
   return null;
 }
 
 function findLeadPlay(hand) {
   const naturals = hand.filter(card => !card.isWild);
+  const cardsByRank = {};
+  const rankCounts = {};
+
+  naturals.forEach(card => {
+    if (!cardsByRank[card.rank]) cardsByRank[card.rank] = [];
+    cardsByRank[card.rank].push(card);
+    rankCounts[card.rank] = (rankCounts[card.rank] || 0) + 1;
+  });
+
+  const uniqueRanks = [...new Set(naturals.map(card => card.rank))].sort((a, b) => a - b);
+
+  const findNaturalSequence = (seqLength, groupSize) => {
+    const localCounts = { ...rankCounts };
+    const localCards = { ...cardsByRank };
+
+    if (localCards[14]) {
+      localCards[1] = localCards[14];
+      localCounts[1] = localCounts[14];
+    }
+    
+    const maxStartRank = 14 - seqLength + 1;
+    let bestCandidate;
+    let bestLeftoverCost = Infinity;
+
+    for (let startRank = 1; startRank <= maxStartRank; startRank++) {
+      let validSequence = true;
+      let testPlay = [];
+      let leftoverCost = 0;
+
+      for (let offset = 0; offset < seqLength; offset++) {
+        const currentRank = startRank + offset;
+        const count = localCounts[currentRank] || 0;
+        if (count < groupSize || count >= 4) {
+          validSequence = false;
+          break;
+        }
+        leftoverCost += (count - groupSize);
+        testPlay.push(...localCards[currentRank].slice(0, groupSize));
+      }
+      if (validSequence && leftoverCost < bestLeftoverCost) {
+        bestCandidate = testPlay;
+        bestLeftoverCost = leftoverCost;
+        if (bestLeftoverCost === 0) break;
+      }
+    }
+    return bestCandidate;
+  };
+
+  for (const rank of uniqueRanks) {
+    if (rankCounts[rank] === 1) return [cardsByRank[rank][0]];
+  }
+
+  for (const rank of uniqueRanks) {
+    if (rankCounts[rank] === 2) return cardsByRank[rank].slice(0, 2);
+  }
+
+  const straight = findNaturalSequence(5, 1);
+  if (straight) return straight;
+
+  const tube = findNaturalSequence(3, 2);
+  if (tube) return tube;
+
+  const plate = findNaturalSequence(2, 3);
+  if (plate) return plate;
+
+  for (const rank of uniqueRanks) {
+    if (rankCounts[rank] === 3) return cardsByRank[rank].slice(0, 3);
+  }
+
+  for (const tripRank of uniqueRanks) {
+    if (rankCounts[tripRank] === 3) {
+      for (const pairRank of uniqueRanks) {
+        if (pairRank !== tripRank && (rankCounts[pairRank] === 2 || rankCounts[pairRank] === 3)) {
+          return [
+            ...cardsByRank[tripRank].slice(0, 3),
+            ...cardsByRank[pairRank].slice(0, 2)
+          ];
+        }
+      }
+    }
+  }
+
+  for (const rank of uniqueRanks) {
+    if (rankCounts[rank] >= 4) return cardsByRank[rank].slice(0, 4);
+  }
+
+  return [hand[0]];
 }
 
 function getCandidateGroups(uniqueRanks, cardsByRank, rankCounts, requiredNaturals, excludeRank = null) {
   const candidates = [];
-  for (let targetCount = requiredNaturals; targetCount <= 4; targetCount++) {
-    if (requiredNaturals > 0 && targetCount === 0) continue; 
-    
-    for (const rank of uniqueRanks) {
-      if (rank === excludeRank) {
-        continue;
-      }
-      
-      const count = rankCounts[rank] || 0;
-      if (count === targetCount || (targetCount === 4 && count >= 4)) {
-        candidates.push({
-          rank: rank,
-          cards: requiredNaturals > 0 ? cardsByRank[rank].slice(0, requiredNaturals) : []
-        });
-      }
+
+  for (const rank of uniqueRanks) {
+    if (rank === excludeRank) {
+      continue;
     }
+    const count = rankCounts[rank] || 0;
+    if (count < requiredNaturals) {
+      continue;
+    }
+
+    const usableCount = Math.min(count, 4);
+    const leftoverCost = usableCount - requiredNaturals;
+
+    candidates.push({
+      rank,
+      cards: requiredNaturals > 0 ? cardsByRank[rank].slice(0, requiredNaturals) : [],
+      leftoverCost
+    });
   }
+
+  candidates.sort((a, b) => a.leftoverCost - b.leftoverCost || a.rank - b.rank);
+
+  // for (let targetCount = requiredNaturals; targetCount <= 4; targetCount++) {
+  //   if (requiredNaturals > 0 && targetCount === 0) continue; 
+    
+  //   for (const rank of uniqueRanks) {
+  //     if (rank === excludeRank) {
+  //       continue;
+  //     }
+      
+  //     const count = rankCounts[rank] || 0;
+  //     if (count === targetCount || (targetCount === 4 && count >= 4)) {
+  //       candidates.push({
+  //         rank: rank,
+  //         cards: requiredNaturals > 0 ? cardsByRank[rank].slice(0, requiredNaturals) : []
+  //       });
+  //     }
+  //   }
+  // }
   
   return candidates;
 }
 
-function findPlayOfSize(hand, rankCounts, playSize) {
+function findPlayOfSize(hand, playSize) {
   const wilds = hand.filter(card => card.isWild);
   const naturals = hand.filter(card => !card.isWild);
 
   const cardsByRank = {};
+  const rankCounts = {};
   const currentTrickCards = gameState.currentTrick.cards;
   naturals.forEach(card => {
     if (!cardsByRank[card.rank]) cardsByRank[card.rank] = [];
     cardsByRank[card.rank].push(card);
+    rankCounts[card.rank] = (rankCounts[card.rank] || 0) + 1;
   });
 
-  const uniqueRanks = [...new Set(hand.map(card => card.rank))];
+  const uniqueRanks = [...new Set(naturals.map(card => card.rank))];
 
   for (let wildsToSpend = 0; wildsToSpend <= wilds.length; wildsToSpend++) {
     const requiredNaturals = playSize - wildsToSpend;
@@ -200,21 +306,20 @@ function findPlayOfSize(hand, rankCounts, playSize) {
   return null;
 }
 
-function findFullHouse(hand, rankCounts) {
+function findFullHouse(hand) {
   const wilds = hand.filter(card => card.isWild);
   const naturals = hand.filter(card => !card.isWild);
 
   const cardsByRank = {};
+  const rankCounts = {};
   const currentTrickCards = gameState.currentTrick.cards;
   naturals.forEach(card => {
     if (!cardsByRank[card.rank]) cardsByRank[card.rank] = [];
     cardsByRank[card.rank].push(card);
+    rankCounts[card.rank] = (rankCounts[card.rank] || 0) + 1;
   });
 
-  const uniqueRanks = [...new Set(hand.map(card => card.rank))];
-  let candidateTriple;
-  let candidatePair;
-  let testPlay;
+  const uniqueRanks = [...new Set(naturals.map(card => card.rank))];
 
   for (let wildsToSpend = 0; wildsToSpend <= wilds.length; wildsToSpend++) {
     for (let wildsForTriple = 0; wildsForTriple <= wildsToSpend; wildsForTriple++) {
@@ -240,48 +345,21 @@ function findFullHouse(hand, rankCounts) {
         }
       }
     }
-
-
-    // // try to look for exact groups of 3 before breaking up bombs (at least 4 of a kind)
-    // for (let tripleTarget = 3; tripleTarget <= 4; tripleTarget++) {
-    //   for (const tripleRank of uniqueRanks) {
-    //     const tripleCount = rankCounts[tripleRank];
-
-    //     if (tripleCount === tripleTarget || (tripleTarget === 4 && tripleCount >= 4)) {
-    //       candidateTriple = cardsByRank[tripleRank].slice(0, 3);
-
-    //       // try to look for groups of 2, then 3, then 4
-    //       for (let pairTarget = 2; pair <= 4; pairTarget++) {
-    //         for (const pairRank of uniqueRanks) {
-    //           if (pairRank === tripleRank) {
-    //             continue;
-    //           }
-    //           const pairCount = rankCounts[pairRank];
-    //           if (pairCount === pairTarget || (pairTarget === 4 && pairCount >= 4)) {
-    //             candidatePair = cardsByRank[pairRank].slice(0, 2);
-    //             testPlay = [...candidateTriple, ...candidatePair];
-    //             if (canBeat(testPlay, currentTrickCards)) {
-    //               return testPlay;
-    //             }
-    //           }
-    //         }
-    //       }
-    //     }
-    //   }
-    // }
   }
   return null;
 }
 
-function findSequencePlay(hand, rankCounts, seqLength, groupSize) {
+function findSequencePlay(hand, seqLength, groupSize) {
   const wilds = hand.filter(card => card.isWild);
   const naturals = hand.filter(card => !card.isWild);
 
   const cardsByRank = {};
+  const rankCounts = {};
   const currentTrickCards = gameState.currentTrick.cards;
   naturals.forEach(card => {
     if (!cardsByRank[card.rank]) cardsByRank[card.rank] = [];
     cardsByRank[card.rank].push(card);
+    rankCounts[card.rank] = (rankCounts[card.rank] || 0) + 1;
   });
 
   if (cardsByRank[14]) {
@@ -331,6 +409,138 @@ function findSequencePlay(hand, rankCounts, seqLength, groupSize) {
   }
 
   return null;
+}
+
+function findBomb(hand) {
+  const wilds = hand.filter(card => card.isWild);
+  const naturals = hand.filter(card => !card.isWild);
+
+  const cardsByRank = {};
+  const rankCounts = {};
+  const currentTrickCards = gameState.currentTrick.cards;
+
+  naturals.forEach(card => {
+    if (!cardsByRank[card.rank]) cardsByRank[card.rank] = [];
+    cardsByRank[card.rank].push(card);
+    rankCounts[card.rank] = (rankCounts[card.rank] || 0) + 1;
+  });
+
+  const uniqueRanks = [...new Set(naturals.map(card => card.rank))].sort((a, b) => a - b);
+
+  const findStandardBomb = (bombSize) => {
+    for (let wildsToSpend = 0; wildsToSpend <= wilds.length; wildsToSpend++) {
+      const requiredNaturals = bombSize - wildsToSpend;
+      if (requiredNaturals <= 0) {
+        continue;
+      }
+      for (const rank of uniqueRanks) {
+        const count = rankCounts[rank] || 0;
+        if (count >= requiredNaturals) {
+          const testPlay = [
+            ...cardsByRank[rank].slice(0, requiredNaturals),
+            ...wilds.slice(0, wildsToSpend)
+          ];
+          if (canBeat(testPlay, currentTrickCards)) {
+            return testPlay;
+          }
+        }
+      }
+    }
+    return null;
+  };
+  
+  let play = findStandardBomb(4);
+  if (play) return play;
+
+  play = findStandardBomb(5);
+  if (play) return play;
+
+  play = findStraightFlushBomb(hand);
+  if (play) return play;
+
+  for (let size = 6; size <= 10; size++) {
+    play = findStandardBomb(size);
+    if (play) return play;
+  }
+
+  return findJokerBomb(hand);
+}
+
+function findStraightFlushBomb(hand) {
+  const wilds = hand.filter(card => card.isWild);
+  const naturals = hand.filter(card => !card.isWild);
+  const currentTrickCards = gameState.currentTrick.cards;
+  const suits = ['S', 'H', 'C', 'D'];
+
+  for (let wildsToSpend = 0; wildsToSpend <= wilds.length; wildsToSpend++) {
+    for (const suit of suits) {
+      const suitNaturals = naturals.filter(card => card.suit === suit);
+
+      const cardsByRank = {};
+      suitNaturals.forEach(card => {
+        cardsByRank[card.rank] = card;
+      });
+
+      if (cardsByRank[14]) {
+        cardsByRank[1] = cardsByRank[14];
+      }
+
+      for (let startRank = 1; startRank <= 10; startRank++) {
+        let validSequence = true;
+        let testPlay = [];
+        let currentWildsNeeded = 0;
+        for (let offset = 0; offset < 5; offset++) {
+          const currentRank = startRank + offset;
+          if (!cardsByRank[currentRank]) {
+            currentWildsNeeded++;
+          } else {
+            testPlay.push(cardsByRank[currentRank]);
+          }
+
+          if (currentWildsNeeded > wildsToSpend) {
+            validSequence = false;
+            break;
+          }
+        }
+        if (validSequence && currentWildsNeeded === wildsToSpend) {
+          testPlay.push(...wilds.slice(0, wildsToSpend));
+          if (canBeat(testPlay, currentTrickCards)) {
+            return testPlay;
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function findJokerBomb(hand) {
+  const jokers = hand.filter(card => card.rank >= 15);
+  if (jokers.length === 4) {
+    const testPlay = [...jokers];
+    if (canBeat(testPlay, gameState.currentTrick.cards)) {
+      return testPlay;
+    }
+  }
+  return null;
+}
+
+function shouldUseBomb(botIndex) {
+  const hand = gameState.players[botIndex];
+  const winnderIndex = gameState.currentTrick.winnerIndex;
+  const winnerHand = gameState.players[winnderIndex];
+
+  // the player who put the current trick is close to winning
+  if (winnerHand.length <= 3) {
+    return true;
+  }
+  // this bot is close to winning
+  if (hand.length <= 5) {
+    return true;
+  }
+
+  const willingness = 1 - hand.length / 27;
+  return Math.random() < willingness * 0.4;
 }
 
 initGame();
