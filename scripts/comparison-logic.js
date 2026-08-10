@@ -46,6 +46,20 @@ export function evalPair(cards) {
     return null;
   }
 
+  const hasJokers = cards.some(card => card.rank >= 15);
+
+  //wilds can't stand in for jokers
+  if (hasJokers) {
+    const wildsCount = cards.filter(card => card.isWild).length;
+    if (wildsCount > 0 || cards[0].rank !== cards[1].rank) {
+      return null;
+    }
+    return new Classification({
+      name: 'Pair',
+      topRank: cards[0].rank
+    });
+  }
+
   const naturals = cards.filter(card => !card.isWild);
 
   if (naturals.length === 2 && naturals[0].rank !== naturals[1].rank) {

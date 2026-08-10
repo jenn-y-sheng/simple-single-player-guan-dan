@@ -110,6 +110,8 @@ function clearPassIndicators() {
 }
 
 function handlePlayCards() {
+  if (gameState.gameOver) return;
+
   const stagedCards = document.querySelectorAll('.card.staged');
   if (stagedCards.length === 0) {
     return;
@@ -177,6 +179,8 @@ function handlePass() {
 }
 
 function executeOpponentTurn() {
+  if (gameState.gameOver) return;
+
   if (gameState.activePlayerIndex === 0) {
     if (gameState.currentTrick.cards.length === 0) {
       setTimeout(() => {

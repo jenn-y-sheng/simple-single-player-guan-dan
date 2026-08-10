@@ -6,6 +6,7 @@ export const gameState = {
   trickPile: [],
   activePlayerIndex: 0,
   passCount: 0,
+  gameOver: false,
 
   currentTrick: {
     cards: [],
@@ -16,13 +17,29 @@ export const gameState = {
   passTurn() {
     console.log(`Player ${this.activePlayerIndex + 1} passed`);
     this.passCount++;
-    if (this.passCount === 3) {
+
+    const winnerIndex = this.currentTrick.winnerIndex;
+    // everyone except winner needs to pass
+    const passesNeeded = this.players.filter((hand, i) => i !== winnerIndex && hand.length > 0).length;
+
+    if (this.passCount >= passesNeeded) {
       console.log(`Player ${this.currentTrick.winnerIndex + 1} wins this turn`);
       this.activePlayerIndex = this.currentTrick.winnerIndex;
+
+      if (this.players[this.activePlayerIndex].length == 0) {
+        const partnerIndex = getPartnerIndex(this.activePlayerIndex);
+        if (this.players[partnerIndex].length > 0) {
+          console.log(`Table control passes to partner: Player ${partnerIndex + 1}`);
+          this.activePlayerIndex = partnerIndex;
+        } else {
+          this.advanceTurn();
+        }
+      }
+
       this.currentTrick = {cards: [], details: null, winnerIndex: null};
       this.passCount = 0;
     } else {
-      this.activePlayerIndex = (this.activePlayerIndex + 1) % 4; // so we can wrap around
+      this.advanceTurn();
     }
   },
 
@@ -54,9 +71,24 @@ export const gameState = {
     );
 
     this.passCount = 0;
-    this.activePlayerIndex = (this.activePlayerIndex + 1) % 4;
+    this.advanceTurn();
 
     return true;
+  },
+
+  advanceTurn() {
+    const activePlayersCount = this.players.filter(hand => hand.length > 0).length;
+    if (activePlayersCount <= 1) {
+      console.log('Game over');
+      this.gameOver = true;
+      return;
+    }
+
+    let nextIndex = (this.activePlayerIndex + 1) % 4;
+    while (this.players[nextIndex].length === 0) {
+      nextIndex = (nextIndex + 1) % 4;
+    }
+    this.activePlayerIndex = nextIndex;
   }
 }
 
@@ -100,6 +132,10 @@ function sortHand(hand) {
 
 export function findValidPlayForBot(botIndex) {
   const hand = gameState.players[botIndex];
+  if (hand.length === 0) {
+    return null;
+  }
+
   const currentTrick = gameState.currentTrick;
 
   const rankCounts = {};
@@ -155,7 +191,11 @@ function findLeadPlay(hand) {
     rankCounts[card.rank] = (rankCounts[card.rank] || 0) + 1;
   });
 
-  const uniqueRanks = [...new Set(naturals.map(card => card.rank))].sort((a, b) => a - b);
+  const uniqueRanks = [...new Set(naturals.map(card => card.rank))]
+    .filter(rank => rank < 15)
+    .sort((a, b) => rankStrength(a) - rankStrength(b));
+
+  const jokerRanks = [...new Set(naturals.filter(c => c.rank >= 15).map(c => c.rank))];
 
   const findNaturalSequence = (seqLength, groupSize) => {
     const localCounts = { ...rankCounts };
@@ -198,23 +238,6 @@ function findLeadPlay(hand) {
     if (rankCounts[rank] === 1) return [cardsByRank[rank][0]];
   }
 
-  for (const rank of uniqueRanks) {
-    if (rankCounts[rank] === 2) return cardsByRank[rank].slice(0, 2);
-  }
-
-  const straight = findNaturalSequence(5, 1);
-  if (straight) return straight;
-
-  const tube = findNaturalSequence(3, 2);
-  if (tube) return tube;
-
-  const plate = findNaturalSequence(2, 3);
-  if (plate) return plate;
-
-  for (const rank of uniqueRanks) {
-    if (rankCounts[rank] === 3) return cardsByRank[rank].slice(0, 3);
-  }
-
   for (const tripRank of uniqueRanks) {
     if (rankCounts[tripRank] === 3) {
       for (const pairRank of uniqueRanks) {
@@ -229,7 +252,28 @@ function findLeadPlay(hand) {
   }
 
   for (const rank of uniqueRanks) {
+    if (rankCounts[rank] === 2) return cardsByRank[rank].slice(0, 2);
+  }
+
+  for (const rank of uniqueRanks) {
+    if (rankCounts[rank] === 3) return cardsByRank[rank].slice(0, 3);
+  }
+
+  const straight = findNaturalSequence(5, 1);
+  if (straight) return straight;
+
+  const tube = findNaturalSequence(3, 2);
+  if (tube) return tube;
+
+  const plate = findNaturalSequence(2, 3);
+  if (plate) return plate;
+
+  for (const rank of uniqueRanks) {
     if (rankCounts[rank] >= 4) return cardsByRank[rank].slice(0, 4);
+  }
+
+  if (jokerRanks.length > 0) {
+    return [cardsByRank[jokerRanks[0]][0]];
   }
 
   return [hand[0]];
@@ -306,7 +350,8 @@ function findPlayOfSize(hand, playSize) {
       if (canBeat(testPlay, currentTrickCards)) {
         return {
           cards: testPlay,
-          leftoverCost: candidate.leftoverCost
+          leftoverCost: candidate.leftoverCost,
+          usesJoker: candidate.rank >= 15
         };
       }
     }
@@ -320,6 +365,14 @@ function tryContestPlayOfSize(hand, playSize) {
 
   if (result.leftoverCost > 0 && gameState.players[gameState.currentTrick.winnerIndex].length > 5) {
     return null;
+  }
+
+  // only use joker if someone's close to winning
+  if (result.usesJoker) {
+    const winnerHandLength = gameState.players[gameState.currentTrick.winnerIndex].length;
+    if (winnerHandLength > 3 && hand.length > 3) {
+      return null;
+    }
   }
 
   return result.cards;
@@ -469,11 +522,11 @@ function tryContestSequence(hand, seqLength, groupSize, botIndex) {
     return result.cards;
   }
 
-  if (winnerHand.length <= 4) {
+  if (winnerHand.length <= 10) {
     return result.cards;
   }
 
-  if (hand.length <= 6) {
+  if (hand.length <= 10) {
     return result.cards;
   }
 
@@ -607,11 +660,11 @@ function shouldUseBomb(botIndex) {
   const opponentPlayedBomb = gameState.currentTrick.details.tier !== undefined;
 
   // the player who put the current trick is close to winning
-  if (winnerHand.length <= 10) {
+  if (winnerHand.length <= 13) {
     return true;
   }
   // this bot is close to winning
-  if (hand.length <= 10) {
+  if (hand.length <= 13) {
     return true;
   }
 
