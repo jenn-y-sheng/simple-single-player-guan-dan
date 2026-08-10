@@ -8,6 +8,12 @@
 
 export let currentLevel = 2;
 
+function rankStrength(rank) {
+  if (rank >= 15) return 100 + rank;
+  if (rank === currentLevel) return 99;
+  return rank;
+}
+
 class Classification {
   name;
   topRank;
@@ -133,13 +139,13 @@ export function evalFullHouse(cards) {
       } else if (countB === 3 && countA === 1) {
         topRank = rankB;
       } else if (countA === 2 && countB === 2) {
-        topRank = Math.max(rankA, rankB);
+        topRank = rankStrength(rankA) >= rankStrength(rankB) ? rankA : rankB;
       } else {
         return null; 
       }
     } 
     else if (wildsCount === 2) {
-      topRank = Math.max(rankA, rankB);
+      topRank = rankStrength(rankA) >= rankStrength(rankB) ? rankA : rankB;
     }
   }
   return new Classification({

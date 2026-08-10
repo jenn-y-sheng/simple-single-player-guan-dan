@@ -214,6 +214,7 @@ function executeOpponentTurn() {
 
 function renderCardCounts() {
   const counts = [
+    { id: 'count-bottom', index: 0},
     { id: 'count-right', index: 1 },
     { id: 'count-top', index: 2 },
     { id: 'count-left', index: 3 }

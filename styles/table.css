@@ -104,7 +104,7 @@ body {
 
 #action-bar {
   position: absolute;
-  top: -80px;
+  top: -100px;
   display: flex;
   gap: 15px;
 }
@@ -165,3 +165,6 @@ body {
 }
 
 #player-top .card-count { bottom: 35px; }
+#player-bottom .card-count { 
+  position: static;
+}
