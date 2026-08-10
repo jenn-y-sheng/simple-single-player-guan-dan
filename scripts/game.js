@@ -7,6 +7,7 @@ export const gameState = {
   activePlayerIndex: 0,
   passCount: 0,
   gameOver: false,
+  firstPlayerOut: null,
 
   currentTrick: {
     cards: [],
@@ -70,6 +71,11 @@ export const gameState = {
       handCard => !cards.includes(handCard)
     );
 
+    if (this.players[this.activePlayerIndex].length === 0 && this.firstPlayerOut === null) {
+      this.firstPlayerOut = this.activePlayerIndex;
+      console.log(`Player ${this.firstPlayerOut + 1} went out first! Their team is winning.`);
+    }
+
     this.passCount = 0;
     this.advanceTurn();
 
@@ -77,6 +83,15 @@ export const gameState = {
   },
 
   advanceTurn() {
+    if (this.firstPlayerOut !== null) {
+      const partnerIndex = getPartnerIndex(this.firstPlayerOut);
+      if (this.players[partnerIndex].length === 0) {
+        console.log(`Game Over! Team ${this.firstPlayerOut % 2 === 0 ? '1 & 3' : '2 & 4'} wins!`);
+        this.gameOver = true;
+        return;
+      }
+    }
+
     const activePlayersCount = this.players.filter(hand => hand.length > 0).length;
     if (activePlayersCount <= 1) {
       console.log('Game over');
