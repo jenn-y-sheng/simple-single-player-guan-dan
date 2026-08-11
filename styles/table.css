@@ -206,7 +206,9 @@ body {
 }
 
 #player-top .rank-indicator { top: 30%; }
-#player-bottom .rank-indicator { bottom: 30%; }
+#player-bottom .rank-indicator { bottom: 40%; }
+#player-left .rank-indicator { left: 18%; }
+#player-right .rank-indicator { right: 18%; }
 
 #victory-banner {
   display: none;

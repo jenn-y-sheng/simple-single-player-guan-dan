@@ -36,6 +36,14 @@ function getSvgFileName(card) {
   return `${rankStr}_of_${suitStr}.svg`
 }
 
+function getCardDisplayName(card) {
+  const rankMap = { 11: 'Jack', 12: 'Queen', 13: 'King', 14: 'Ace', 15: 'Small Joker', 16: 'Big Joker' };
+  const suitMap = { 'S': 'Spades', 'H': 'Hearts', 'C': 'Clubs', 'D': 'Diamonds' };
+  const rankStr = rankMap[card.rank] || card.rank;
+  const suitStr = card.rank >= 15 ? '' : ` of ${suitMap[card.suit]}`;
+  return `${rankStr}${suitStr}`;
+}
+
 function renderHumanHand() {
   const handContainer = document.getElementById('hand-container');
   handContainer.innerHTML = '';
@@ -120,6 +128,24 @@ function handlePlayCards() {
   }
   const stagedIndices = Array.from(stagedCards)
     .map(card => parseInt(card.dataset.index));
+
+  if (gameState.isTributePhase) {
+    if (stagedIndices.length !== 1) {
+      const trickInfoElement = document.getElementById('trick-info');
+      const lastText = trickInfoElement.textContent;
+      trickInfoElement.textContent = 'Select exactly 1 card to return!';
+      setTimeout(() => trickInfoElement.textContent = lastText, 2000);
+      return;
+    }
+
+    const success = gameState.returnCardFromHuman(stagedIndices[0]);
+    if (success) {
+       document.querySelectorAll('.card.staged').forEach(card => card.classList.remove('staged'));
+       renderHumanHand(); 
+    }
+    return;
+  }
+
   const actualCardsToPlay = stagedIndices.map(index => gameState.players[0][index]);
 
   const isSuccess = gameState.playCards(actualCardsToPlay);
@@ -186,30 +212,51 @@ function executeOpponentTurn() {
 
   if (gameState.activePlayerIndex === 0 && !isAutoplay) {
     if (gameState.currentTrick.cards.length === 0) {
+      const hasMessage = gameState.humanTributeLog || gameState.tributeResistedMessage || (gameState.botTributeLogs && gameState.botTributeLogs.length > 0);
+      const delay = hasMessage ? 8000 : 1000;
       setTimeout(() => {
         clearPassIndicators();
         document.getElementById('trick-pile').innerHTML = '';
         document.getElementById('trick-info').textContent = '';
         document.getElementById('trick-player').textContent = '';
-      }, 1000);
+        gameState.humanTributeLog = null;
+        gameState.tributeResistedMessage = null;
+        gameState.botTributeLogs = [];
+      }, delay);
     }
     return;
   }
   const botIndex = gameState.activePlayerIndex;
-  const delay = isAutoplay ? 400 : 1500;
+  let delay = isAutoplay ? 400 : 1500;
+
+  const hasMessage = gameState.humanTributeLog || gameState.tributeResistedMessage || (gameState.botTributeLogs && gameState.botTributeLogs.length > 0);
+
+  if (hasMessage && gameState.currentTrick.cards.length === 0) {
+     delay = 8000; 
+     gameState.humanTributeLog = null;
+     gameState.tributeResistedMessage = null;
+     gameState.botTributeLogs = [];
+  }
 
   setTimeout(() => {
     const cardsToPlay = findValidPlayForBot(botIndex);
 
     if (cardsToPlay) {
-      gameState.playCards(cardsToPlay);
-      clearPassIndicators();
-      gameState.trickPile = [...cardsToPlay];
+      const success = gameState.playCards(cardsToPlay);
 
-      const trickPlayerElement = document.getElementById('trick-player');
-      trickPlayerElement.textContent = PLAYER_NAMES[gameState.currentTrick.winnerIndex];
+      if (!success) {
+        console.error(`Bot ${botIndex + 1} produced an invalid play:`, cardsToPlay);
+        gameState.passTurn();
+        showPassIndicator(botIndex);
+      } else {
+        clearPassIndicators();
+        gameState.trickPile = [...cardsToPlay];
 
-      document.getElementById('trick-info').textContent = gameState.currentTrick.details.name;
+        const trickPlayerElement = document.getElementById('trick-player');
+        trickPlayerElement.textContent = PLAYER_NAMES[gameState.currentTrick.winnerIndex];
+
+        document.getElementById('trick-info').textContent = gameState.currentTrick.details.name;
+      }
     } else {
       gameState.passTurn();
       showPassIndicator(botIndex);
@@ -345,20 +392,75 @@ document.addEventListener('levelUpdated', (event) => {
 
 document.getElementById('button-next-round').addEventListener('click', (event) => {
   event.target.style.display = 'none';
-
   document.getElementById('victory-banner').style.display = 'none';
-
-  startNewRound();
-  renderLevelDisplay();
-
   document.getElementById('trick-pile').innerHTML = '';
   document.getElementById('trick-info').textContent = '';
   document.getElementById('trick-player').textContent = '';
   clearPassIndicators();
+  renderRankIndicators();
+  startNewRound();
+  renderLevelDisplay();
 
+  if (gameState.isTributePhase && gameState.pendingReturns.some(r => r.from === 0)) {
+     renderRankIndicators();
+     const playBtn = document.getElementById('button-play');
+     playBtn.textContent = "Return Card";
+     playBtn.style.backgroundColor = "#e74c3c";
+
+     const returnData = gameState.pendingReturns.find(r => r.from === 0);
+     const card = returnData.cardReceived;
+
+     const rankMap = { 11: 'Jack', 12: 'Queen', 13: 'King', 14: 'Ace', 15: 'Small Joker', 16: 'Big Joker' };
+     const suitMap = { 'S': 'Spades', 'H': 'Hearts', 'C': 'Clubs', 'D': 'Diamonds' };
+     
+     const rankStr = rankMap[card.rank] || card.rank;
+     const suitStr = card.rank >= 15 ? '' : ` of ${suitMap[card.suit]}`;
+
+     document.getElementById('trick-info').innerHTML = 
+       `Player ${returnData.to + 1} paid you the ${rankStr}${suitStr}!<br>Select 1 low card to return to them.`;
+     
+     renderHumanHand();
+     renderOpponentHands();
+  } else {
+     renderHumanHand();
+     renderOpponentHands();
+  }
+});
+
+document.addEventListener('tributePhaseEnded', () => {
+  const playBtn = document.getElementById('button-play');
+  playBtn.textContent = "Play Cards";
+  playBtn.style.backgroundColor = "";
+  
+  if (gameState.tributeResistedMessage) {
+    document.getElementById('trick-info').innerHTML = gameState.tributeResistedMessage;
+  } else {
+    let messages = [];
+
+    if (gameState.humanTributeLog) {
+      const log = gameState.humanTributeLog;
+      const givenName = getCardDisplayName(log.givenCard);
+      const receivedName = getCardDisplayName(log.receivedCard);
+      messages.push(`You paid Player ${log.paidTo + 1} the ${givenName}<br>and received the ${receivedName}!`);
+    }
+    
+    if (gameState.botTributeLogs && gameState.botTributeLogs.length > 0) {
+      gameState.botTributeLogs.forEach(log => {
+        const givenName = getCardDisplayName(log.givenCard);
+        const receivedName = getCardDisplayName(log.returnedCard);
+        messages.push(`Player ${log.giver + 1} paid Player ${log.receiver + 1} the ${givenName}<br>and received the ${receivedName}!`);
+      });
+    }
+
+    if (messages.length > 0) {
+      document.getElementById('trick-info').innerHTML = messages.join('<br><br>');
+    } else {
+      document.getElementById('trick-info').textContent = '';
+    }
+  }
+  
   renderHumanHand();
   renderOpponentHands();
-  renderRankIndicators();
   executeOpponentTurn();
 });
 
@@ -372,4 +474,4 @@ document.getElementById('button-autoplay').addEventListener('click', (event) => 
   if (isAutoplay && gameState.activePlayerIndex === 0 && !gameState.gameOver) {
     executeOpponentTurn(); 
   }
-})
+});

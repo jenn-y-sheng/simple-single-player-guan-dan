@@ -15,6 +15,9 @@ export const gameState = {
   lastFinishingOrder: [],
   isTributePhase: false,
   pendingReturns: [],
+  humanTributeLog: null,
+  tributeResistedMessage: null,
+  botTributeLogs: [],
 
   currentTrick: {
     cards: [],
@@ -87,6 +90,8 @@ export const gameState = {
       handCard => !cards.includes(handCard)
     );
 
+    console.log(`Player ${this.activePlayerIndex + 1} now has ${this.players[this.activePlayerIndex].length} cards`);
+
     if (this.players[this.activePlayerIndex].length === 0 && !this.finishingOrder.includes(this.activePlayerIndex)) {
       this.finishingOrder.push(this.activePlayerIndex);
       console.log(`Player ${this.activePlayerIndex + 1} finished in position ${this.finishingOrder.length}`);
@@ -112,6 +117,11 @@ export const gameState = {
     }
 
     if (roundOver) {
+      for (let i = 0; i < 4; i++) {
+        if (!this.finishingOrder.includes(i)) {
+          this.finishingOrder.push(i);
+        }
+      }
       this.calculateLevelUp();
       return;
     }
@@ -179,8 +189,14 @@ export const gameState = {
   },
 
   handleTributes() {
-    const tributes = evaluateTribute(this.lastFinishingOrder);
-    if (!tributes || tributes.length === 0) {
+    const tributeData = evaluateTribute(this.lastFinishingOrder);
+    if (!tributeData) {
+      this.endTributePhase();
+      return;
+    }
+
+    if (tributeData.type === 'resisted') {
+      this.tributeResistedMessage = `Tribute Resisted!<br>The ${tributeData.message} drew both Big Jokers.`;
       this.endTributePhase();
       return;
     }
@@ -188,15 +204,12 @@ export const gameState = {
     this.isTributePhase = true;
     this.pendingReturns = [];
 
-    tributes.forEach(t => {
-      const giver = t.from;
-      const receiver = t.to;
-
-      let highestCard = this.players[giver][0];
+    const extractHighestCard = (playerIndex) => {
+      let highestCard = this.players[playerIndex][0];
       let highestStrength = rankStrength(highestCard.rank);
       let highestIndex = 0;
 
-      this.players[giver].forEach((card, index) => {
+      this.players[playerIndex].forEach((card, index) => {
         const strength = rankStrength(card.rank);
         if (strength > highestStrength) {
           highestStrength = strength;
@@ -204,14 +217,49 @@ export const gameState = {
           highestIndex = index;
         }
       });
+      return {card: this.players[playerIndex].splice(highestIndex, 1)[0], giver: playerIndex};
+    };
 
-      this.players[giver].splice(highestIndex, 1);
-      this.players[receiver].push(highestCard);
-      sortHand(this.players[receiver]);
+    if (tributeData.type === 'double') {
+      const offering1 = extractHighestCard(tributeData.third);
+      const offering2 = extractHighestCard(tributeData.fourth);
 
-      this.pendingReturns.push({ from: receiver, to: giver });
-      console.log(`Player ${giver + 1} pays tribute to Player ${receiver + 1}`);
-    });
+      let bestOffering, secondBestOffering;
+      if (rankStrength(offering1.card.rank) >= rankStrength(offering2.card.rank)) {
+        bestOffering = offering1;
+        secondBestOffering = offering2;
+      } else {
+        bestOffering = offering2;
+        secondBestOffering = offering1;
+      }
+
+      this.players[tributeData.first].push(bestOffering.card);
+      sortHand(this.players[tributeData.first]);
+      this.pendingReturns.push({ from: tributeData.first, to: bestOffering.giver, cardReceived: bestOffering.card });
+
+      this.players[tributeData.second].push(secondBestOffering.card);
+      sortHand(this.players[tributeData.second]);
+      this.pendingReturns.push({ from: tributeData.second, to: secondBestOffering.giver, cardReceived: secondBestOffering.card });
+
+      console.log(`Player ${bestOffering.giver + 1} pays highest tribute to Player ${tributeData.first + 1}`);
+      console.log(`Player ${secondBestOffering.giver + 1} pays secondary tribute to Player ${tributeData.second + 1}`);
+    } else {
+      const offering = extractHighestCard(tributeData.fourth);
+      this.players[tributeData.first].push(offering.card);
+      sortHand(this.players[tributeData.first]);
+      this.pendingReturns.push({ from: tributeData.first, to: offering.giver, cardReceived: offering.card });
+      
+      console.log(`Player ${offering.giver + 1} pays tribute to Player ${tributeData.first + 1}`);
+    }
+
+    const humanReturn = this.pendingReturns.find(r => r.to === 0);
+    if (humanReturn) {
+      this.humanTributeLog = {
+        paidTo: humanReturn.from,
+        givenCard: humanReturn.cardReceived,
+        receivedCard: null
+      };
+    }
 
     this.processBotReturns();
   },
@@ -236,6 +284,19 @@ export const gameState = {
       const returnedCard = this.players[receiver].splice(lowestCardIndex, 1)[0];
       this.players[ret.to].push(returnedCard);
       sortHand(this.players[ret.to]);
+
+      if (ret.to === 0 && this.humanTributeLog) {
+        this.humanTributeLog.receivedCard = returnedCard;
+      }
+
+      if (receiver !== 0 && ret.to !== 0) {
+        this.botTributeLogs.push({
+          giver: ret.to,
+          receiver: receiver,
+          givenCard: ret.cardReceived,
+          returnedCard: returnedCard
+        });
+      }
       
       console.log(`Player ${receiver + 1} returns a card to Player ${ret.to + 1}`);
       return false;
@@ -361,6 +422,7 @@ export function findValidPlayForBot(botIndex) {
 
 function findLeadPlay(hand) {
   const naturals = hand.filter(card => !card.isWild);
+  const wilds = hand.filter(card => card.isWild);
   const cardsByRank = {};
   const rankCounts = {};
 
@@ -430,14 +492,6 @@ function findLeadPlay(hand) {
     }
   }
 
-  for (const rank of uniqueRanks) {
-    if (rankCounts[rank] === 2) return cardsByRank[rank].slice(0, 2);
-  }
-
-  for (const rank of uniqueRanks) {
-    if (rankCounts[rank] === 3) return cardsByRank[rank].slice(0, 3);
-  }
-
   const straight = findNaturalSequence(5, 1);
   if (straight) return straight;
 
@@ -446,6 +500,14 @@ function findLeadPlay(hand) {
 
   const plate = findNaturalSequence(2, 3);
   if (plate) return plate;
+
+  for (const rank of uniqueRanks) {
+    if (rankCounts[rank] === 2) return cardsByRank[rank].slice(0, 2);
+  }
+
+  for (const rank of uniqueRanks) {
+    if (rankCounts[rank] === 3) return cardsByRank[rank].slice(0, 3);
+  }
 
   for (const rank of uniqueRanks) {
     if (rankCounts[rank] >= 4) return cardsByRank[rank].slice(0, 4);
@@ -457,6 +519,13 @@ function findLeadPlay(hand) {
       return cardsByRank[targetJoker].slice(0, 2);
     }
     return [cardsByRank[targetJoker][0]];
+  }
+
+  if (wilds.length >= 2) {
+    return wilds.slice(0, 2);
+  }
+  if (wilds.length === 1) {
+    return [wilds[0]];
   }
 
   return [hand[0]];
@@ -553,7 +622,7 @@ function tryContestPlayOfSize(hand, playSize) {
   // only use joker if someone's close to winning
   if (result.usesJoker) {
     const winnerHandLength = gameState.players[gameState.currentTrick.winnerIndex].length;
-    if (winnerHandLength > 3 && hand.length > 3) {
+    if (winnerHandLength > 8 && hand.length > 8) {
       return null;
     }
   }
@@ -853,7 +922,7 @@ function shouldUseBomb(botIndex) {
 
   let willingness = 1 - hand.length / 27;
 
-  if (gameState.tableController === winnerIndex && gameState.consecutiveControlCount >= 2) {
+  if (gameState.tableController === winnerIndex && gameState.consecutiveControlCount >= 2 && gameState.tableController !== botIndex) {
     willingness += 0.40;
     console.log(`Player ${botIndex + 1} is getting impatient with Player ${winnerIndex + 1}'s table control`);
   }
@@ -881,7 +950,7 @@ function shouldOverridePartner(botIndex, hand) {
   if (partnerHandLength === 1) {
     return false;
   }
-  if (hand.length <= 2) {
+  if (hand.length <= 6) {
     return true;
   }
   return false;
@@ -889,6 +958,7 @@ function shouldOverridePartner(botIndex, hand) {
 
 export function startNewRound() {
   const nextLeader = gameState.finishingOrder.length > 0 ? gameState.finishingOrder[0] : 0;
+  gameState.lastFinishingOrder = [...gameState.finishingOrder];
 
   gameState.players = [[], [], [], []];
   gameState.trickPile = [];
@@ -898,10 +968,14 @@ export function startNewRound() {
   gameState.tableController = null;
   gameState.consecutiveControlCount = 0;
   gameState.finishingOrder = [];
+  gameState.humanTributeLog = null;
+  gameState.tributeResistedMessage = null;
+  gameState.botTributeLogs = [];
 
   gameState.activePlayerIndex = nextLeader;
 
   initGame();
+  gameState.handleTributes();
 }
 
 function evaluateTribute(previousFinishingOrder) {
@@ -935,7 +1009,7 @@ function evaluateTribute(previousFinishingOrder) {
 
   if (losingRedJokers >= 2) {
     console.log(`Tribute resisted! The ${message} drew both big jokers.`);
-    return null;
+    return { type: 'resisted', message: message };
   }
 
   // if winning team got 1st and 2nd
