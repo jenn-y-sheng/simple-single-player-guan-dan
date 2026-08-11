@@ -193,3 +193,40 @@ body {
 
   position: absolute;
 }
+
+.rank-indicator {
+  position: absolute;
+  z-index: 50;
+  font-size: 32px;
+  font-weight: bold;
+  padding: 20px 25px;
+  border-radius: 50%;
+  border: 4px solid white;
+  pointer-events: none;
+}
+
+#player-top .rank-indicator { top: 30%; }
+#player-bottom .rank-indicator { bottom: 30%; }
+
+#victory-banner {
+  display: none;
+  position: absolute;
+  top: 23%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.85);
+  color: #f1c40f;
+  padding: 10px 40px;
+  border-radius: 15px;
+
+  text-align: center;
+}
+
+#victory-title {
+  font-weight: bold;
+  letter-spacing: 4px;
+}
+
+#victory-subtitle {
+  font-size: 18px;
+}

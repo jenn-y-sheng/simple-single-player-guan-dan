@@ -138,6 +138,7 @@ function handlePlayCards() {
 
     renderHumanHand();
     renderTrickPile();
+    renderRankIndicators();
 
     executeOpponentTurn();
   } else {
@@ -209,6 +210,7 @@ function executeOpponentTurn() {
 
       renderOpponentHands();
       renderTrickPile();
+      renderRankIndicators();
     } else {
       gameState.passTurn();
       renderOpponentHands();
@@ -267,6 +269,29 @@ function renderLevelDisplay() {
   }
 }
 
+function renderRankIndicators() {
+  document.querySelectorAll('.rank-indicator').forEach(el => el.remove());
+
+  const placements = ['1st', '2nd', '3rd', '4th'];
+
+  const bgColors = ['#FFD700', '#C0C0C0', '#CD7F32', '#2c3e50']; 
+  const textColors = ['black', 'black', 'white', 'white'];
+
+  gameState.finishingOrder.forEach((playerIndex, finishIndex) => {
+    const containerId = playerContainers[playerIndex];
+    const container = document.getElementById(containerId);
+
+    const indicator = document.createElement('div');
+    indicator.classList.add('rank-indicator');
+    indicator.textContent = placements[finishIndex];
+
+    indicator.style.backgroundColor = bgColors[finishIndex];
+    indicator.style.color = textColors[finishIndex];
+
+    container.appendChild(indicator);
+  })
+}
+
 window.addEventListener('resize', () => {
   fixRowStarts(document.getElementById('hand-container'));
   fixRowStarts(document.querySelector('.horizontal-hand'));
@@ -287,12 +312,37 @@ document.getElementById('button-pass').addEventListener('click', () => {
   handlePass();
 });
 
-document.addEventListener('levelUpdated', () => {
+document.addEventListener('levelUpdated', (event) => {
   document.getElementById('button-next-round').style.display = 'block';
+
+  const team = event.detail.winningTeam;
+  const levels = event.detail.levelsGained;
+  const newLevel = event.detail.newLevel;
+
+  const titleEl = document.getElementById('victory-title');
+  const subtitleEl = document.getElementById('victory-subtitle');
+
+  if (newLevel >= 14) {
+    titleEl.textContent = `TEAM ${team} WINS IT ALL!`;
+    subtitleEl.textContent = `They have reached the Ace!`;
+    
+    document.getElementById('button-next-round').style.display = 'none';
+  } else {
+    titleEl.textContent = `Team ${team} Wins!`;
+    subtitleEl.textContent = `Promoted ${levels} Level${levels > 1 ? 's' : ''}!`;
+  }
+
+  document.getElementById('victory-banner').style.display = 'block';
+
+  if (newLevel < 14) {
+    document.getElementById('button-next-round').style.display = 'block';
+  }
 });
 
-document.getElementById('button-next-round').addEventListener('click', (e) => {
-  e.target.style.display = 'none';
+document.getElementById('button-next-round').addEventListener('click', (event) => {
+  event.target.style.display = 'none';
+
+  document.getElementById('victory-banner').style.display = 'none';
 
   startNewRound();
   renderLevelDisplay();
@@ -304,5 +354,6 @@ document.getElementById('button-next-round').addEventListener('click', (e) => {
 
   renderHumanHand();
   renderOpponentHands();
+  renderRankIndicators();
   executeOpponentTurn();
 })

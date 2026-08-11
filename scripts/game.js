@@ -156,7 +156,13 @@ export const gameState = {
     console.log(`Team ${winningTeam + 1} wins the round and gains ${levelsGained} level(s)!`);
     console.log(`New levels: team 1 is at ${this.teamLevels[0]}, team 2 is at ${this.teamLevels[1]}`);
     console.log(`The next round will be played at level: ${currentLevel}`);
-    document.dispatchEvent(new CustomEvent('levelUpdated'));
+    document.dispatchEvent(new CustomEvent('levelUpdated', {
+      detail: {
+        winningTeam: winningTeam + 1,
+        levelsGained: levelsGained,
+        newLevel: this.teamLevels[winningTeam]
+      }
+    }));
   }
 }
 
