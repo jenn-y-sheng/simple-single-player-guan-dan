@@ -31,6 +31,7 @@ export const gameState = {
 
       if (this.players[this.activePlayerIndex].length == 0) {
         const partnerIndex = getPartnerIndex(this.activePlayerIndex);
+
         if (this.players[partnerIndex].length > 0) {
           console.log(`Table control passes to partner: Player ${partnerIndex + 1}`);
           this.activePlayerIndex = partnerIndex;
@@ -155,9 +156,7 @@ export const gameState = {
     console.log(`Team ${winningTeam + 1} wins the round and gains ${levelsGained} level(s)!`);
     console.log(`New levels: team 1 is at ${this.teamLevels[0]}, team 2 is at ${this.teamLevels[1]}`);
     console.log(`The next round will be played at level: ${currentLevel}`);
-    setTimeout(() => {
-      initGame();
-    }, 2000);
+    document.dispatchEvent(new CustomEvent('levelUpdated'));
   }
 }
 
@@ -342,7 +341,11 @@ function findLeadPlay(hand) {
   }
 
   if (jokerRanks.length > 0) {
-    return [cardsByRank[jokerRanks[0]][0]];
+    const targetJoker = jokerRanks[0];
+    if (rankCounts[targetJoker] === 2) {
+      return cardsByRank[targetJoker].slice(0, 2);
+    }
+    return [cardsByRank[targetJoker][0]];
   }
 
   return [hand[0]];
@@ -768,6 +771,21 @@ function shouldOverridePartner(botIndex, hand) {
     return true;
   }
   return false;
+}
+
+export function startNewRound() {
+  const nextLeader = gameState.finishingOrder.length > 0 ? gameState.finishingOrder[0] : 0;
+
+  gameState.players = [[], [], [], []];
+  gameState.trickPile = [];
+  gameState.currentTrick = { cards: [], details: null, winnerIndex: null };
+  gameState.passCount = 0;
+  gameState.gameOver = false;
+  gameState.finishingOrder = [];
+
+  gameState.activePlayerIndex = nextLeader;
+
+  initGame();
 }
 
 initGame();

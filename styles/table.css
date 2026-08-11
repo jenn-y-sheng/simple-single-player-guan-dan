@@ -63,7 +63,7 @@ body {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  margin-top: 140px;
+  margin-top: 100px;
   width: 100%;
   margin-left: 40px;
 }
@@ -124,6 +124,16 @@ body {
   background-color: #f39c12;
 }
 
+#button-next-round {
+  display: none;
+  background-color: #e74c3c;
+  color: white;
+}
+
+#button-next-round:hover {
+  background-color: #be1e1e;
+}
+
 #trick-pile {
   display: flex;
   justify-content: center;
@@ -164,7 +174,7 @@ body {
   padding: 10px 20px;
 }
 
-#player-top .card-count { bottom: 20px; }
+#player-top .card-count { bottom: 35px; }
 #player-bottom .card-count { 
   position: static;
 }

@@ -1,5 +1,5 @@
-import { evaluatePlay, canBeat } from "./comparison-logic.js";
-import { gameState, findValidPlayForBot } from "./game.js";
+import { evaluatePlay, canBeat, currentLevel } from "./comparison-logic.js";
+import { gameState, findValidPlayForBot, startNewRound } from "./game.js";
 
 const PLAYER_NAMES = ['You', 'Player 2', 'Player 3', 'Player 4'];
 
@@ -59,6 +59,7 @@ function renderHumanHand() {
     handContainer.appendChild(cardElement);
   });
   renderCardCounts();
+  fixRowStarts(document.getElementById('hand-container'));
 }
 
 function renderOpponentHands() {
@@ -248,6 +249,24 @@ function fixRowStarts(container) {
   });
 }
 
+function renderLevelDisplay() {
+  const rankMap = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A'};
+
+  const displayCurrent = rankMap[currentLevel] || currentLevel;
+  const displayTeam1 = rankMap[gameState.teamLevels[0]] || gameState.teamLevels[0];
+  const displayTeam2 = rankMap[gameState.teamLevels[1]] || gameState.teamLevels[1];
+
+  const currentLevelEl = document.getElementById('ui-current-level');
+  const team1El = document.getElementById('ui-team1-level');
+  const team2El = document.getElementById('ui-team2-level');
+
+  if (currentLevelEl && team1El && team2El) {
+    currentLevelEl.textContent = `Currently playing at Level: ${displayCurrent}`;
+    team1El.textContent = `Team 1 Level: ${displayTeam1}`;
+    team2El.textContent = `Team 2 Level: ${displayTeam2}`;
+  }
+}
+
 window.addEventListener('resize', () => {
   fixRowStarts(document.getElementById('hand-container'));
   fixRowStarts(document.querySelector('.horizontal-hand'));
@@ -257,6 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderHumanHand();
   renderOpponentHands();
   executeOpponentTurn();
+  renderLevelDisplay();
 });
 
 document.getElementById('button-play').addEventListener('click', () => {
@@ -266,3 +286,23 @@ document.getElementById('button-play').addEventListener('click', () => {
 document.getElementById('button-pass').addEventListener('click', () => {
   handlePass();
 });
+
+document.addEventListener('levelUpdated', () => {
+  document.getElementById('button-next-round').style.display = 'block';
+});
+
+document.getElementById('button-next-round').addEventListener('click', (e) => {
+  e.target.style.display = 'none';
+
+  startNewRound();
+  renderLevelDisplay();
+
+  document.getElementById('trick-pile').innerHTML = '';
+  document.getElementById('trick-info').textContent = '';
+  document.getElementById('trick-player').textContent = '';
+  clearPassIndicators();
+
+  renderHumanHand();
+  renderOpponentHands();
+  executeOpponentTurn();
+})
