@@ -10,6 +10,11 @@ export const gameState = {
   teamLevels: [2, 2], // you and p3 & p2 and p4
   finishingOrder: [],
   declarerTeam: null,
+  tableController: null,
+  consecutiveControlCount: 0,
+  lastFinishingOrder: [],
+  isTributePhase: false,
+  pendingReturns: [],
 
   currentTrick: {
     cards: [],
@@ -27,6 +32,14 @@ export const gameState = {
 
     if (this.passCount >= passesNeeded) {
       console.log(`Player ${this.currentTrick.winnerIndex + 1} wins this turn`);
+
+      if (this.tableController === winnerIndex) {
+        this.consecutiveControlCount++;
+      } else {
+        this.tableController = winnerIndex;
+        this.consecutiveControlCount = 1;
+      }
+
       this.activePlayerIndex = this.currentTrick.winnerIndex;
 
       if (this.players[this.activePlayerIndex].length == 0) {
@@ -163,6 +176,98 @@ export const gameState = {
         newLevel: this.teamLevels[winningTeam]
       }
     }));
+  },
+
+  handleTributes() {
+    const tributes = evaluateTribute(this.lastFinishingOrder);
+    if (!tributes || tributes.length === 0) {
+      this.endTributePhase();
+      return;
+    }
+
+    this.isTributePhase = true;
+    this.pendingReturns = [];
+
+    tributes.forEach(t => {
+      const giver = t.from;
+      const receiver = t.to;
+
+      let highestCard = this.players[giver][0];
+      let highestStrength = rankStrength(highestCard.rank);
+      let highestIndex = 0;
+
+      this.players[giver].forEach((card, index) => {
+        const strength = rankStrength(card.rank);
+        if (strength > highestStrength) {
+          highestStrength = strength;
+          highestCard = card;
+          highestIndex = index;
+        }
+      });
+
+      this.players[giver].splice(highestIndex, 1);
+      this.players[receiver].push(highestCard);
+      sortHand(this.players[receiver]);
+
+      this.pendingReturns.push({ from: receiver, to: giver });
+      console.log(`Player ${giver + 1} pays tribute to Player ${receiver + 1}`);
+    });
+
+    this.processBotReturns();
+  },
+
+  processBotReturns() {
+    // bots return weakest non-wild card
+    this.pendingReturns = this.pendingReturns.filter(ret => {
+      const receiver = ret.from;
+      if (receiver === 0) return true; // humans return manually
+
+      let lowestCardIndex = 0;
+      let lowestStrength = Infinity;
+      
+      this.players[receiver].forEach((card, i) => {
+         const strength = rankStrength(card.rank);
+         if (strength < lowestStrength && !card.isWild) {
+           lowestStrength = strength;
+           lowestCardIndex = i;
+         }
+      });
+      
+      const returnedCard = this.players[receiver].splice(lowestCardIndex, 1)[0];
+      this.players[ret.to].push(returnedCard);
+      sortHand(this.players[ret.to]);
+      
+      console.log(`Player ${receiver + 1} returns a card to Player ${ret.to + 1}`);
+      return false;
+    });
+
+    if (this.pendingReturns.length === 0) {
+       this.endTributePhase();
+    }
+  },
+
+  returnCardFromHuman(cardIndex) {
+    const retIndex = this.pendingReturns.findIndex(r => r.from === 0);
+    if (retIndex === -1) return false;
+
+    const ret = this.pendingReturns[retIndex];
+    const returnedCard = this.players[0].splice(cardIndex, 1)[0];
+    this.players[ret.to].push(returnedCard);
+    sortHand(this.players[ret.to]);
+
+    console.log(`You returned a card to Player ${ret.to + 1}`);
+    this.pendingReturns.splice(retIndex, 1);
+
+    if (this.pendingReturns.length === 0) {
+       this.endTributePhase();
+    }
+    return true;
+  },
+
+  endTributePhase() {
+    this.isTributePhase = false;
+    this.activePlayerIndex = this.lastFinishingOrder.length > 0 ? this.lastFinishingOrder[0] : 0;
+    document.dispatchEvent(new CustomEvent('tributePhaseEnded'));
   }
 }
 
@@ -738,22 +843,25 @@ function shouldUseBomb(botIndex) {
   const opponentPlayedBomb = gameState.currentTrick.details.tier !== undefined;
 
   // the player who put the current trick is close to winning
-  if (winnerHand.length <= 13) {
+  if (winnerHand.length <= 10) {
     return true;
   }
   // this bot is close to winning
-  if (hand.length <= 13) {
+  if (hand.length <= 10) {
     return true;
   }
 
-  let willingness;
+  let willingness = 1 - hand.length / 27;
+
+  if (gameState.tableController === winnerIndex && gameState.consecutiveControlCount >= 2) {
+    willingness += 0.40;
+    console.log(`Player ${botIndex + 1} is getting impatient with Player ${winnerIndex + 1}'s table control`);
+  }
 
   if (opponentPlayedBomb) {
-    willingness = 1 - hand.length / 27;
     return Math.random() < willingness * 0.75;
   }
 
-  willingness = 1 - hand.length / 27;
   return Math.random() < willingness * 0.4;
 }
 
@@ -787,11 +895,55 @@ export function startNewRound() {
   gameState.currentTrick = { cards: [], details: null, winnerIndex: null };
   gameState.passCount = 0;
   gameState.gameOver = false;
+  gameState.tableController = null;
+  gameState.consecutiveControlCount = 0;
   gameState.finishingOrder = [];
 
   gameState.activePlayerIndex = nextLeader;
 
   initGame();
+}
+
+function evaluateTribute(previousFinishingOrder) {
+  if (previousFinishingOrder.length < 4) {
+    return null;
+  }
+
+  const first = previousFinishingOrder[0];
+  const second = previousFinishingOrder[1];
+  const third = previousFinishingOrder[2];
+  const fourth = previousFinishingOrder[3];
+
+  const winningTeam = first % 2;
+  const losingTeam = 1 - winningTeam;
+
+  // does losing team have both red jokers
+  let losingRedJokers = 0;
+  let message = '';
+
+  if (getPartnerIndex(first) === second) {
+    for (let i = 0; i < 4; i++) {
+      if (i % 2 === losingTeam) {
+        losingRedJokers += gameState.players[i].filter(c => c.rank === 16).length;
+      }
+    }
+    message = 'losing team';
+  } else {
+    losingRedJokers += gameState.players[fourth].filter(c => c.rank === 16).length;
+    message = 'player in last'
+  }
+
+  if (losingRedJokers >= 2) {
+    console.log(`Tribute resisted! The ${message} drew both big jokers.`);
+    return null;
+  }
+
+  // if winning team got 1st and 2nd
+  if (getPartnerIndex(first) === second) {
+    return { type: 'double', first, second, third, fourth };
+  } else {
+    return { type: 'single', first, fourth };
+  }
 }
 
 initGame();
