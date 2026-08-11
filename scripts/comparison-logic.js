@@ -8,6 +8,10 @@
 
 export let currentLevel = 2;
 
+export function setCurrentLevel(newLevel) {
+  currentLevel = newLevel;
+}
+
 export function rankStrength(rank) {
   if (rank >= 15) return 100 + rank;
   if (rank === currentLevel) return 99;
@@ -106,8 +110,22 @@ export function evalFullHouse(cards) {
     return null;
   }
 
-  const hasJokers = cards.some(card => card.rank >= 15);
-  if (hasJokers) {
+  const jokers = cards.filter(card => card.rank >= 15);
+  if (jokers.length > 0) {
+    // jokers can only be a pair and they have to be the same type
+    if (jokers.length !== 2 || jokers[0].rank !== jokers[1].rank) {
+      return null;
+    }
+
+    const nonJokers = cards.filter(card => card.rank < 15);
+    const triple = evalTriple(nonJokers);
+
+    if (triple) {
+      return new Classification({
+        name: 'Full-House',
+        topRank: triple.topRank
+      });
+    }
     return null;
   }
 

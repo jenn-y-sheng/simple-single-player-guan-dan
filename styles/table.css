@@ -63,7 +63,7 @@ body {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  margin-top: 100px;
+  margin-top: 140px;
   width: 100%;
   margin-left: 40px;
 }
@@ -164,7 +164,22 @@ body {
   padding: 10px 20px;
 }
 
-#player-top .card-count { bottom: 35px; }
+#player-top .card-count { bottom: 20px; }
 #player-bottom .card-count { 
   position: static;
+}
+
+#levels-container {
+  display: inline-flex;
+  flex-direction: column;
+  row-gap: 5px;
+  margin: 20px;
+  background-color: #f1c40f;
+  border-radius: 5px;
+  padding: 25px;
+  font-size: 18px;
+  font-weight: bold;
+  z-index: 100;
+
+  position: absolute;
 }

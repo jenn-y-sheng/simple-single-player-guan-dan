@@ -1,4 +1,4 @@
-import { currentLevel, evaluatePlay, canBeat, rankStrength } from "./comparison-logic.js";
+import { currentLevel, evaluatePlay, canBeat, rankStrength, setCurrentLevel } from "./comparison-logic.js";
 import { generateDeck, fisherYatesShuffle } from "./deck.js";
 
 export const gameState = {
@@ -7,7 +7,9 @@ export const gameState = {
   activePlayerIndex: 0,
   passCount: 0,
   gameOver: false,
-  firstPlayerOut: null,
+  teamLevels: [2, 2], // you and p3 & p2 and p4
+  finishingOrder: [],
+  declarerTeam: null,
 
   currentTrick: {
     cards: [],
@@ -71,9 +73,9 @@ export const gameState = {
       handCard => !cards.includes(handCard)
     );
 
-    if (this.players[this.activePlayerIndex].length === 0 && this.firstPlayerOut === null) {
-      this.firstPlayerOut = this.activePlayerIndex;
-      console.log(`Player ${this.firstPlayerOut + 1} went out first! Their team is winning.`);
+    if (this.players[this.activePlayerIndex].length === 0 && !this.finishingOrder.includes(this.activePlayerIndex)) {
+      this.finishingOrder.push(this.activePlayerIndex);
+      console.log(`Player ${this.activePlayerIndex + 1} finished in position ${this.finishingOrder.length}`);
     }
 
     this.passCount = 0;
@@ -83,27 +85,79 @@ export const gameState = {
   },
 
   advanceTurn() {
-    if (this.firstPlayerOut !== null) {
-      const partnerIndex = getPartnerIndex(this.firstPlayerOut);
-      if (this.players[partnerIndex].length === 0) {
-        console.log(`Game Over! Team ${this.firstPlayerOut % 2 === 0 ? '1 & 3' : '2 & 4'} wins!`);
-        this.gameOver = true;
-        return;
+    let roundOver = false;
+
+    if (this.finishingOrder.length >= 3) {
+      roundOver = true;
+    } else if (this.finishingOrder.length === 2) {
+      const first = this.finishingOrder[0];
+      const second = this.finishingOrder[1];
+      if (getPartnerIndex(first) === second) {
+        roundOver = true;
       }
     }
 
-    const activePlayersCount = this.players.filter(hand => hand.length > 0).length;
-    if (activePlayersCount <= 1) {
-      console.log('Game over');
-      this.gameOver = true;
+    if (roundOver) {
+      this.calculateLevelUp();
       return;
     }
+
+    // if (this.firstPlayerOut !== null) {
+    //   const partnerIndex = getPartnerIndex(this.firstPlayerOut);
+    //   if (this.players[partnerIndex].length === 0) {
+    //     console.log(`Game Over! Team ${this.firstPlayerOut % 2 === 0 ? '1 & 3' : '2 & 4'} wins!`);
+    //     this.gameOver = true;
+    //     return;
+    //   }
+    // }
+
+    // const activePlayersCount = this.players.filter(hand => hand.length > 0).length;
+    // if (activePlayersCount <= 1) {
+    //   console.log('Game over');
+    //   this.gameOver = true;
+    //   return;
+    // }
 
     let nextIndex = (this.activePlayerIndex + 1) % 4;
     while (this.players[nextIndex].length === 0) {
       nextIndex = (nextIndex + 1) % 4;
     }
     this.activePlayerIndex = nextIndex;
+  },
+
+  calculateLevelUp() {
+    const banker = this.finishingOrder[0];
+    const winningTeam = banker % 2;
+    const partner = getPartnerIndex(banker);
+
+    let partnerPosition = this.finishingOrder.indexOf(partner);
+    if (partnerPosition === -1) {
+      partnerPosition = 3;
+    }
+
+    let levelsGained = 0;
+    if (partnerPosition === 1) levelsGained = 3;
+    else if (partnerPosition === 2) levelsGained = 2;
+    else if (partnerPosition === 3) levelsGained = 1;
+
+    this.teamLevels[winningTeam] += levelsGained;
+    
+    // top level is ace (14)
+    if (this.teamLevels[winningTeam] > 14) {
+      this.teamLevels[winningTeam] = 14;
+    }
+
+    this.declarerTeam = winningTeam;
+    this.gameOver = true;
+
+    setCurrentLevel(this.teamLevels[winningTeam]);
+
+    console.log(`Team ${winningTeam + 1} wins the round and gains ${levelsGained} level(s)!`);
+    console.log(`New levels: team 1 is at ${this.teamLevels[0]}, team 2 is at ${this.teamLevels[1]}`);
+    console.log(`The next round will be played at level: ${currentLevel}`);
+    setTimeout(() => {
+      initGame();
+    }, 2000);
   }
 }
 
