@@ -2,6 +2,7 @@ import { evaluatePlay, canBeat, currentLevel } from "./comparison-logic.js";
 import { gameState, findValidPlayForBot, startNewRound } from "./game.js";
 
 const PLAYER_NAMES = ['You', 'Player 2', 'Player 3', 'Player 4'];
+let isAutoplay = false;
 
 function getSvgFileName(card) {
   if (card.rank === 15) return 'black_joker.svg';
@@ -183,7 +184,7 @@ function handlePass() {
 function executeOpponentTurn() {
   if (gameState.gameOver) return;
 
-  if (gameState.activePlayerIndex === 0) {
+  if (gameState.activePlayerIndex === 0 && !isAutoplay) {
     if (gameState.currentTrick.cards.length === 0) {
       setTimeout(() => {
         clearPassIndicators();
@@ -195,6 +196,8 @@ function executeOpponentTurn() {
     return;
   }
   const botIndex = gameState.activePlayerIndex;
+  const delay = isAutoplay ? 400 : 1500;
+
   setTimeout(() => {
     const cardsToPlay = findValidPlayForBot(botIndex);
 
@@ -207,17 +210,18 @@ function executeOpponentTurn() {
       trickPlayerElement.textContent = PLAYER_NAMES[gameState.currentTrick.winnerIndex];
 
       document.getElementById('trick-info').textContent = gameState.currentTrick.details.name;
-
-      renderOpponentHands();
-      renderTrickPile();
-      renderRankIndicators();
     } else {
       gameState.passTurn();
-      renderOpponentHands();
       showPassIndicator(botIndex);
     }
+
+    renderHumanHand();
+    renderOpponentHands();
+    renderTrickPile();
+    renderRankIndicators();
+
     executeOpponentTurn();
-  }, 2000);
+  }, delay);
 }
 
 function renderCardCounts() {
@@ -356,4 +360,16 @@ document.getElementById('button-next-round').addEventListener('click', (event) =
   renderOpponentHands();
   renderRankIndicators();
   executeOpponentTurn();
+});
+
+document.getElementById('button-autoplay').addEventListener('click', (event) => {
+  isAutoplay = !isAutoplay;
+
+  event.target.textContent = isAutoplay ? 'Autoplay: ON' : 'Autoplay: OFF';
+  event.target.style.backgroundColor = isAutoplay ? '#e74c3c' : '#f1c40f'; 
+  event.target.style.color = isAutoplay ? 'white' : '#333';
+
+  if (isAutoplay && gameState.activePlayerIndex === 0 && !gameState.gameOver) {
+    executeOpponentTurn(); 
+  }
 })

@@ -211,7 +211,7 @@ body {
 #victory-banner {
   display: none;
   position: absolute;
-  top: 23%;
+  top: 28%;
   left: 50%;
   transform: translate(-50%, -50%);
   background-color: rgba(0, 0, 0, 0.85);
