@@ -27,6 +27,7 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  margin-bottom: 50px;
 }
 #player-bottom { 
   grid-area: bottom;
@@ -159,10 +160,16 @@ body {
   pointer-events: none;
 }
 
-#player-bottom .pass-indicator { top: -150px; }
-#player-left .pass-indicator { right: -100px; }
-#player-right .pass-indicator { left: -100px; }
-#player-top .pass-indicator { top: 180px; }
+#player-bottom .pass-indicator { top: -180px; }
+#player-left .pass-indicator { 
+  right: -90px;
+  margin-bottom: 60px;
+ }
+#player-right .pass-indicator { 
+  left: -90px;
+  margin-bottom: 60px;
+}
+#player-top .pass-indicator { top: 200px; }
 
 .card-count {
   position: absolute;
@@ -231,4 +238,36 @@ body {
 
 #victory-subtitle {
   font-size: 18px;
+}
+
+.player-label {
+  position: absolute;
+  z-index: 15;
+  padding: 8px 16px;
+  color: white;
+  border-radius: 8px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.team-1 { background-color: #2980b9; }
+.team-2 { background-color: #c0392b; }
+
+#player-top .player-label {
+  top: 50px;
+  left: 50%;
+  transform: translate(-50%, 320%);
+}
+#player-left .player-label {
+  right: -80%;
+}
+#player-right .player-label {
+  left: -80%;
+}
+#player-bottom .player-label {
+  top: -150px;
+  left: 50%;
+  transform: translateX(-50%);
 }

@@ -159,6 +159,8 @@ function handlePlayCards() {
     trickInfoElement.textContent = gameState.currentTrick.details.name;
     trickPlayerElement.textContent = PLAYER_NAMES[gameState.currentTrick.winnerIndex];
 
+    trickPlayerElement.style.color = gameState.currentTrick.winnerIndex % 2 === 0 ? '#2980b9' : '#c0392b';
+
     document.querySelectorAll('.card.staged').forEach(card => card.classList.remove('staged'));
 
     clearPassIndicators();
@@ -254,6 +256,8 @@ function executeOpponentTurn() {
 
         const trickPlayerElement = document.getElementById('trick-player');
         trickPlayerElement.textContent = PLAYER_NAMES[gameState.currentTrick.winnerIndex];
+
+        trickPlayerElement.style.color = gameState.currentTrick.winnerIndex % 2 === 0 ? '#239ff1' : '#ed3621';
 
         document.getElementById('trick-info').textContent = gameState.currentTrick.details.name;
       }
