@@ -18,6 +18,10 @@ export const gameState = {
   humanTributeLog: null,
   tributeResistedMessage: null,
   botTributeLogs: [],
+  aceAttempts: [0, 0],
+  gameWon: false,
+  winningTeam: null,
+  finishingPlays: {},
 
   currentTrick: {
     cards: [],
@@ -90,10 +94,9 @@ export const gameState = {
       handCard => !cards.includes(handCard)
     );
 
-    console.log(`Player ${this.activePlayerIndex + 1} now has ${this.players[this.activePlayerIndex].length} cards`);
-
     if (this.players[this.activePlayerIndex].length === 0 && !this.finishingOrder.includes(this.activePlayerIndex)) {
       this.finishingOrder.push(this.activePlayerIndex);
+      this.finishingPlays[this.activePlayerIndex] = { cards: [...cards], details: playDetails };
       console.log(`Player ${this.activePlayerIndex + 1} finished in position ${this.finishingOrder.length}`);
     }
 
@@ -151,7 +154,7 @@ export const gameState = {
 
   calculateLevelUp() {
     const banker = this.finishingOrder[0];
-    const winningTeam = banker % 2;
+    const bankerTeam = banker % 2;
     const partner = getPartnerIndex(banker);
 
     let partnerPosition = this.finishingOrder.indexOf(partner);
@@ -164,26 +167,103 @@ export const gameState = {
     else if (partnerPosition === 2) levelsGained = 2;
     else if (partnerPosition === 3) levelsGained = 1;
 
-    this.teamLevels[winningTeam] += levelsGained;
-    
-    // top level is ace (14)
-    if (this.teamLevels[winningTeam] > 14) {
-      this.teamLevels[winningTeam] = 14;
-    }
+    const isWinningMargin = partnerPosition === 1 || partnerPosition === 2;
+    const isOneFourMargin = partnerPosition === 3;
 
-    this.declarerTeam = winningTeam;
+    const currentDeclarerTeam = this.declarerTeam;
+    const declarerWasAtLevelA = currentDeclarerTeam !== null && this.teamLevels[currentDeclarerTeam] >= 14;
+    const bankerIsDeclarer = bankerTeam === currentDeclarerTeam;
+
     this.gameOver = true;
 
-    setCurrentLevel(this.teamLevels[winningTeam]);
+    if (declarerWasAtLevelA) {
+      if (bankerIsDeclarer) {
+        if (isWinningMargin) {
+          this.gameWon = true;
+          this.winningTeam = bankerTeam;
+          console.log(`Team ${bankerTeam + 1} wins the GAME with a 1-2/1-3 win at level A!`);
+          document.dispatchEvent(new CustomEvent('levelUpdated', {
+            detail: { gameWon: true, winningTeam: bankerTeam + 1, newLevel: 14 }
+          }));
+          return;
+        }
+        this.aceAttempts[bankerTeam]++;
+        console.log(`Team ${bankerTeam + 1} remains declarer at level A (1-4). Attempt ${this.aceAttempts[bankerTeam]}/3.`);
 
-    console.log(`Team ${winningTeam + 1} wins the round and gains ${levelsGained} level(s)!`);
+        const demoted = this.aceAttempts[bankerTeam] >= 3;
+        if (demoted) {
+          this.teamLevels[bankerTeam] = 2;
+          this.aceAttempts[bankerTeam] = 0;
+          console.log(`Team ${bankerTeam + 1} failed 3 attempts at level A — demoted to level 2.`);
+        }
+
+        setCurrentLevel(this.teamLevels[bankerTeam]);
+        document.dispatchEvent(new CustomEvent('levelUpdated', {
+          detail: {
+            winningTeam: bankerTeam + 1,
+            levelsGained: 0,
+            newLevel: this.teamLevels[bankerTeam],
+            staleDeclarer: true
+          }
+        }));
+        return;
+      } else {
+        const opponentTeam = bankerTeam;
+        const declarerTeamIdx = currentDeclarerTeam;
+
+        this.aceAttempts[declarerTeamIdx]++;
+        console.log(`Team ${declarerTeamIdx + 1} failed as level-A declarer (lost). Attempt ${this.aceAttempts[declarerTeamIdx]}/3.`);
+
+        const finishPlay = this.finishingPlays[banker];
+        const allAces = finishPlay && finishPlay.cards.length > 0 && finishPlay.cards.every(c => c.rank === 14);
+        const hitThreeStrikes = this.aceAttempts[declarerTeamIdx] >= 3;
+
+        if (hitThreeStrikes || allAces) {
+          this.teamLevels[declarerTeamIdx] = 2;
+          this.aceAttempts[declarerTeamIdx] = 0;
+          console.log(hitThreeStrikes
+            ? `Team ${declarerTeamIdx + 1} failed 3 attempts at level A — demoted to level 2.`
+            : `Team ${opponentTeam + 1} finished with an all-Aces play! Declarers demoted to level 2.`);
+        }
+
+        this.teamLevels[opponentTeam] += levelsGained;
+        if (this.teamLevels[opponentTeam] > 14) this.teamLevels[opponentTeam] = 14;
+
+        this.declarerTeam = opponentTeam;
+        this.aceAttempts[opponentTeam] = 0;
+
+        setCurrentLevel(this.teamLevels[this.declarerTeam]);
+        document.dispatchEvent(new CustomEvent('levelUpdated', {
+          detail: {
+            winningTeam: opponentTeam + 1,
+            levelsGained: levelsGained,
+            newLevel: this.teamLevels[this.declarerTeam],
+            demotedDeclarer: hitThreeStrikes || allAces
+          }
+        }));
+        return;
+      }
+    }
+
+    this.teamLevels[bankerTeam] += levelsGained;
+    // top level is ace (14)
+    if (this.teamLevels[bankerTeam] > 14) {
+      this.teamLevels[bankerTeam] = 14;
+    }
+
+    this.declarerTeam = bankerTeam;
+    //this.gameOver = true;
+
+    setCurrentLevel(this.teamLevels[bankerTeam]);
+
+    console.log(`Team ${bankerTeam + 1} wins the round and gains ${levelsGained} level(s)!`);
     console.log(`New levels: team 1 is at ${this.teamLevels[0]}, team 2 is at ${this.teamLevels[1]}`);
     console.log(`The next round will be played at level: ${currentLevel}`);
     document.dispatchEvent(new CustomEvent('levelUpdated', {
       detail: {
-        winningTeam: winningTeam + 1,
+        winningTeam: bankerTeam + 1,
         levelsGained: levelsGained,
-        newLevel: this.teamLevels[winningTeam]
+        newLevel: this.teamLevels[bankerTeam]
       }
     }));
   },
@@ -340,9 +420,9 @@ function initGame() {
 
   dealCards(deck);
   console.log("Player 1 Hand: ", gameState.players[0]);
-  console.log("Player 2 Hand: ", gameState.players[1]);
-  console.log("Player 3 Hand: ", gameState.players[2]);
-  console.log("Player 4 Hand: ", gameState.players[3]);
+  // console.log("Player 2 Hand: ", gameState.players[1]);
+  // console.log("Player 3 Hand: ", gameState.players[2]);
+  // console.log("Player 4 Hand: ", gameState.players[3]);
 }
 
 function dealCards(deck) {
@@ -971,6 +1051,7 @@ export function startNewRound() {
   gameState.humanTributeLog = null;
   gameState.tributeResistedMessage = null;
   gameState.botTributeLogs = [];
+  gameState.finishingPlays = {};
 
   gameState.activePlayerIndex = nextLeader;
 
@@ -1024,6 +1105,11 @@ export function startNewGame() {
   gameState.teamLevels = [2, 2];
   gameState.declarerTeam = null;
   gameState.lastFinishingOrder = [];
+  gameState.finishingOrder = [];
+  gameState.finishingPlays = {};
+  gameState.aceAttempts = [0, 0];
+  gameState.gameWon = false;
+  gameState.winningTeam = null;
   
   setCurrentLevel(2); 
   
@@ -1031,6 +1117,8 @@ export function startNewGame() {
 }
 
 initGame();
+// gameState.teamLevels = [14, 2];
+// gameState.declarerTeam = 0;
 
 // const p1Lead = [gameState.players[0][0]]; 
 // gameState.playCards(p1Lead);

@@ -377,28 +377,53 @@ document.getElementById('button-pass').addEventListener('click', () => {
 document.addEventListener('levelUpdated', (event) => {
   document.getElementById('button-next-round').style.display = 'block';
 
-  const team = event.detail.winningTeam;
-  const levels = event.detail.levelsGained;
-  const newLevel = event.detail.newLevel;
+  const { winningTeam, levelsGained, newLevel, gameWon, demotedDeclarer, staleDeclarer } = event.detail;
 
   const titleEl = document.getElementById('victory-title');
   const subtitleEl = document.getElementById('victory-subtitle');
 
-  if (newLevel >= 14) {
-    titleEl.textContent = `TEAM ${team} WINS IT ALL!`;
-    subtitleEl.textContent = `They have reached the Ace!`;
-    
+  if (gameWon) {
+    titleEl.textContent = `TEAM ${winningTeam} WINS THE GAME!`;
+    subtitleEl.textContent = `Won as declarers at Level A!`;
     document.getElementById('button-next-round').style.display = 'none';
+  } else if (staleDeclarer) {
+    if (newLevel === 2) {
+      titleEl.textContent = `Team ${winningTeam} demoted to Level 2`;
+      subtitleEl.textContent = `Failed 3 attempts to win at Level A — remain declarers at Level 2.`;
+    } else {
+      titleEl.textContent = `Team ${winningTeam} remains at Level A`;
+      subtitleEl.textContent = `Won 1-4 — must win 1-2 or 1-3 next to take the game!`;
+    }
+  } else if (demotedDeclarer) {
+    titleEl.textContent = `Team ${winningTeam} becomes Declarer!`;
+    subtitleEl.textContent = newLevel >= 14
+      ? `Promoted to Level A — win 1-2 or 1-3 next to take the game!`
+      : `Former Level-A declarers demoted to Level 2! Promoted ${levelsGained} Level${levelsGained > 1 ? 's' : ''}!`;
+  } else if (newLevel >= 14) {
+    titleEl.textContent = `Team ${winningTeam} reaches Level A!`;
+    subtitleEl.textContent = `Win 1-2 or 1-3 as declarer next to take the game!`;
   } else {
-    titleEl.textContent = `Team ${team} Wins!`;
-    subtitleEl.textContent = `Promoted ${levels} Level${levels > 1 ? 's' : ''}!`;
+    titleEl.textContent = `Team ${winningTeam} Wins!`;
+    subtitleEl.textContent = `Promoted ${levelsGained} Level${levelsGained > 1 ? 's' : ''}!`;
   }
 
   document.getElementById('victory-banner').style.display = 'block';
 
-  if (newLevel < 14) {
-    document.getElementById('button-next-round').style.display = 'block';
-  }
+  // if (newLevel >= 14) {
+  //   titleEl.textContent = `TEAM ${team} WINS IT ALL!`;
+  //   subtitleEl.textContent = `They have reached the Ace!`;
+    
+  //   document.getElementById('button-next-round').style.display = 'none';
+  // } else {
+  //   titleEl.textContent = `Team ${team} Wins!`;
+  //   subtitleEl.textContent = `Promoted ${levels} Level${levels > 1 ? 's' : ''}!`;
+  // }
+
+  // document.getElementById('victory-banner').style.display = 'block';
+
+  // if (newLevel < 14) {
+  //   document.getElementById('button-next-round').style.display = 'block';
+  // }
 });
 
 document.getElementById('button-next-round').addEventListener('click', (event) => {
