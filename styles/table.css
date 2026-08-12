@@ -271,3 +271,27 @@ body {
   left: 50%;
   transform: translateX(-50%);
 }
+
+#upper-left-container {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  display: grid;
+  justify-items: end;
+  row-gap: 10px;
+  z-index: 50;
+}
+
+#button-new-game {
+  background-color: #14ca60;
+  color: white;
+}
+
+#button-new-game:hover {
+  background-color: #0ea04b;
+  color: white;
+}
+
+#rules-link {
+  color: white;
+}

@@ -1020,6 +1020,16 @@ function evaluateTribute(previousFinishingOrder) {
   }
 }
 
+export function startNewGame() {
+  gameState.teamLevels = [2, 2];
+  gameState.declarerTeam = null;
+  gameState.lastFinishingOrder = [];
+  
+  setCurrentLevel(2); 
+  
+  startNewRound();
+}
+
 initGame();
 
 // const p1Lead = [gameState.players[0][0]]; 

@@ -1,5 +1,5 @@
 import { evaluatePlay, canBeat, currentLevel } from "./comparison-logic.js";
-import { gameState, findValidPlayForBot, startNewRound } from "./game.js";
+import { gameState, findValidPlayForBot, startNewRound, startNewGame } from "./game.js";
 
 const PLAYER_NAMES = ['You', 'Player 2', 'Player 3', 'Player 4'];
 let isAutoplay = false;
@@ -484,4 +484,31 @@ document.getElementById('button-autoplay').addEventListener('click', (event) => 
   if (isAutoplay && gameState.activePlayerIndex === 0 && !gameState.gameOver) {
     executeOpponentTurn(); 
   }
+});
+
+document.getElementById('button-new-game').addEventListener('click', () => {
+  document.getElementById('victory-banner').style.display = 'none';
+  document.getElementById('button-next-round').style.display = 'none';
+
+  document.getElementById('trick-pile').innerHTML = '';
+  document.getElementById('trick-info').textContent = '';
+  document.getElementById('trick-player').textContent = '';
+  clearPassIndicators();
+
+  const playBtn = document.getElementById('button-play');
+  playBtn.textContent = "Play Cards";
+  playBtn.style.backgroundColor = "";
+
+  isAutoplay = false;
+  const autoBtn = document.getElementById('button-autoplay');
+  autoBtn.textContent = 'Autoplay: OFF';
+  autoBtn.style.backgroundColor = '#f1c40f'; 
+  autoBtn.style.color = '#333';
+
+  startNewGame();
+
+  renderLevelDisplay();
+  renderRankIndicators(); 
+  renderHumanHand();
+  renderOpponentHands();
 });

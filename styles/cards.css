@@ -46,8 +46,18 @@
   content: '';
   position: absolute;
   left: 0;
-  bottom: -30px;
+  bottom: 0;
   width: 100%;
+  height: 0; 
+}
+
+.card:hover::after {
+  bottom: -15px;
+  height: 15px; 
+}
+
+.card.staged::after {
+  bottom: -30px;
   height: 30px; 
 }
 
