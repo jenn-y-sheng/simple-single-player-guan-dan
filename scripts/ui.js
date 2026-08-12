@@ -4,6 +4,12 @@ import { gameState, findValidPlayForBot, startNewRound } from "./game.js";
 const PLAYER_NAMES = ['You', 'Player 2', 'Player 3', 'Player 4'];
 let isAutoplay = false;
 
+const getColoredName = (index) => {
+  const color = index % 2 === 0 ? '#259be9' : '#e74c3c';
+  const name = index === 0 ? 'you' : `Player ${index + 1}`;
+  return `<span style="color: ${color};">${name}</span>`; 
+};
+
 function getSvgFileName(card) {
   if (card.rank === 15) return 'black_joker.svg';
   if (card.rank === 16) return 'red_joker.svg';
@@ -224,6 +230,8 @@ function executeOpponentTurn() {
         gameState.humanTributeLog = null;
         gameState.tributeResistedMessage = null;
         gameState.botTributeLogs = [];
+
+        renderRankIndicators();
       }, delay);
     }
     return;
@@ -328,7 +336,6 @@ function renderRankIndicators() {
   document.querySelectorAll('.rank-indicator').forEach(el => el.remove());
 
   const placements = ['1st', '2nd', '3rd', '4th'];
-
   const bgColors = ['#FFD700', '#C0C0C0', '#CD7F32', '#2c3e50']; 
   const textColors = ['black', 'black', 'white', 'white'];
 
@@ -401,12 +408,11 @@ document.getElementById('button-next-round').addEventListener('click', (event) =
   document.getElementById('trick-info').textContent = '';
   document.getElementById('trick-player').textContent = '';
   clearPassIndicators();
-  renderRankIndicators();
   startNewRound();
   renderLevelDisplay();
+  renderRankIndicators();
 
   if (gameState.isTributePhase && gameState.pendingReturns.some(r => r.from === 0)) {
-     renderRankIndicators();
      const playBtn = document.getElementById('button-play');
      playBtn.textContent = "Return Card";
      playBtn.style.backgroundColor = "#e74c3c";
@@ -421,7 +427,7 @@ document.getElementById('button-next-round').addEventListener('click', (event) =
      const suitStr = card.rank >= 15 ? '' : ` of ${suitMap[card.suit]}`;
 
      document.getElementById('trick-info').innerHTML = 
-       `Player ${returnData.to + 1} paid you the ${rankStr}${suitStr}!<br>Select 1 low card to return to them.`;
+       `${getColoredName(returnData.to)} paid ${getColoredName(0)} the ${rankStr}${suitStr}!<br>Select 1 low card to return to them.`;
      
      renderHumanHand();
      renderOpponentHands();
@@ -445,14 +451,14 @@ document.addEventListener('tributePhaseEnded', () => {
       const log = gameState.humanTributeLog;
       const givenName = getCardDisplayName(log.givenCard);
       const receivedName = getCardDisplayName(log.receivedCard);
-      messages.push(`You paid Player ${log.paidTo + 1} the ${givenName}<br>and received the ${receivedName}!`);
+      messages.push(`${getColoredName(0)} paid ${getColoredName(log.paidTo)} the ${givenName}<br>and received the ${receivedName}!`);
     }
     
     if (gameState.botTributeLogs && gameState.botTributeLogs.length > 0) {
       gameState.botTributeLogs.forEach(log => {
         const givenName = getCardDisplayName(log.givenCard);
         const receivedName = getCardDisplayName(log.returnedCard);
-        messages.push(`Player ${log.giver + 1} paid Player ${log.receiver + 1} the ${givenName}<br>and received the ${receivedName}!`);
+        messages.push(`${getColoredName(log.giver)} paid ${getColoredName(log.receiver)} the ${givenName}<br>and received the ${receivedName}!`);
       });
     }
 

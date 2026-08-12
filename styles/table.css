@@ -32,7 +32,7 @@ body {
 #player-bottom { 
   grid-area: bottom;
   align-items: flex-end;
-  padding-bottom: 50px;
+  padding-bottom: 30px;
 }
 
 .player-area {
@@ -252,8 +252,8 @@ body {
   white-space: nowrap;
 }
 
-.team-1 { background-color: #2980b9; }
-.team-2 { background-color: #c0392b; }
+.team-1 { background-color: #259be9; }
+.team-2 { background-color: #e74c3c; }
 
 #player-top .player-label {
   top: 50px;
