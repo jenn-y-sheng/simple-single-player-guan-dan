@@ -354,6 +354,57 @@ function renderRankIndicators() {
   })
 }
 
+function restoreUIState() {
+  // refreshed during a tribute phase that needs a human return
+  if (gameState.isTributePhase && gameState.pendingReturns.some(r => r.from === 0)) {
+    const playBtn = document.getElementById('button-play');
+    playBtn.textContent = "Return Card";
+    playBtn.style.backgroundColor = "#e74c3c";
+
+    const returnData = gameState.pendingReturns.find(r => r.from === 0);
+    const card = returnData.cardReceived;
+
+    const rankMap = { 11: 'Jack', 12: 'Queen', 13: 'King', 14: 'Ace', 15: 'Small Joker', 16: 'Big Joker' };
+    const suitMap = { 'S': 'Spades', 'H': 'Hearts', 'C': 'Clubs', 'D': 'Diamonds' };
+     
+    const rankStr = rankMap[card.rank] || card.rank;
+    const suitStr = card.rank >= 15 ? '' : ` of ${suitMap[card.suit]}`;
+
+    document.getElementById('trick-info').innerHTML = 
+      `${getColoredName(returnData.to)} paid ${getColoredName(0)} the ${rankStr}${suitStr}!<br>Select 1 low card to return to them.`;
+  }
+
+  // if refreshed during a trick
+  if (gameState.trickPile.length > 0) {
+    renderTrickPile();
+    const trickPlayerElement = document.getElementById('trick-player');
+    trickPlayerElement.textContent = PLAYER_NAMES[gameState.currentTrick.winnerIndex];
+    trickPlayerElement.style.color = gameState.currentTrick.winnerIndex % 2 === 0 ? '#2980b9' : '#c0392b';
+    
+    if (gameState.currentTrick.details) {
+      document.getElementById('trick-info').textContent = gameState.currentTrick.details.name;
+    }
+  }
+  renderRankIndicators();
+
+  if (gameState.gameOver && !gameState.gameWon) {
+    document.getElementById('button-next-round').style.display = 'block';
+    document.getElementById('victory-title').textContent = `ROUND OVER`;
+    document.getElementById('victory-subtitle').textContent = `Check the badges and start the next round!`;
+    document.getElementById('victory-banner').style.display = 'block';
+  } else if (gameState.gameWon) {
+    document.getElementById('victory-title').textContent = `TEAM ${gameState.winningTeam} WINS THE GAME!`;
+    document.getElementById('victory-subtitle').textContent = `Won as declarers at Level A!`;
+    document.getElementById('victory-banner').style.display = 'block';
+  }
+
+  if (gameState.passedPlayers && gameState.passedPlayers.length > 0) {
+    gameState.passedPlayers.forEach(playerIndex => {
+      showPassIndicator(playerIndex);
+    });
+  }
+}
+
 window.addEventListener('resize', () => {
   fixRowStarts(document.getElementById('hand-container'));
   fixRowStarts(document.querySelector('.horizontal-hand'));
@@ -362,8 +413,9 @@ window.addEventListener('resize', () => {
 document.addEventListener('DOMContentLoaded', () => {
   renderHumanHand();
   renderOpponentHands();
-  executeOpponentTurn();
   renderLevelDisplay();
+  restoreUIState();
+  executeOpponentTurn();
 });
 
 document.getElementById('button-play').addEventListener('click', () => {
@@ -403,7 +455,7 @@ document.addEventListener('levelUpdated', (event) => {
     titleEl.textContent = `Team ${winningTeam} reaches Level A!`;
     subtitleEl.textContent = `Win 1-2 or 1-3 as declarer next to take the game!`;
   } else {
-    titleEl.textContent = `Team ${winningTeam} Wins!`;
+    titleEl.textContent = `TEAM ${winningTeam} WINS!`;
     subtitleEl.textContent = `Promoted ${levelsGained} Level${levelsGained > 1 ? 's' : ''}!`;
   }
 

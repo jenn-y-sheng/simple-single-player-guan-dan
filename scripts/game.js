@@ -22,6 +22,7 @@ export const gameState = {
   gameWon: false,
   winningTeam: null,
   finishingPlays: {},
+  passedPlayers:[],
 
   currentTrick: {
     cards: [],
@@ -31,6 +32,7 @@ export const gameState = {
 
   passTurn() {
     console.log(`Player ${this.activePlayerIndex + 1} passed`);
+    this.passedPlayers.push(this.activePlayerIndex);
     this.passCount++;
 
     const winnerIndex = this.currentTrick.winnerIndex;
@@ -62,9 +64,12 @@ export const gameState = {
 
       this.currentTrick = {cards: [], details: null, winnerIndex: null};
       this.passCount = 0;
+      // this.trickPile = [];
+      // this.passedPlayers = [];
     } else {
       this.advanceTurn();
     }
+    saveGameState();
   },
 
   playCards(cards) {
@@ -90,6 +95,9 @@ export const gameState = {
       winnerIndex: this.activePlayerIndex
     };
 
+    this.trickPile = [...cards];
+    this.passedPlayers = [];
+
     this.players[this.activePlayerIndex] = this.players[this.activePlayerIndex].filter(
       handCard => !cards.includes(handCard)
     );
@@ -102,6 +110,8 @@ export const gameState = {
 
     this.passCount = 0;
     this.advanceTurn();
+
+    saveGameState();
 
     return true;
   },
@@ -385,6 +395,8 @@ export const gameState = {
     if (this.pendingReturns.length === 0) {
        this.endTributePhase();
     }
+
+    saveGameState();
   },
 
   returnCardFromHuman(cardIndex) {
@@ -402,6 +414,7 @@ export const gameState = {
     if (this.pendingReturns.length === 0) {
        this.endTributePhase();
     }
+    saveGameState();
     return true;
   },
 
@@ -409,7 +422,63 @@ export const gameState = {
     this.isTributePhase = false;
     this.activePlayerIndex = this.lastFinishingOrder.length > 0 ? this.lastFinishingOrder[0] : 0;
     document.dispatchEvent(new CustomEvent('tributePhaseEnded'));
+    saveGameState();
   }
+}
+
+function saveGameState() {
+  const snapshot = {
+    players: gameState.players,
+    trickPile: gameState.trickPile,
+    activePlayerIndex: gameState.activePlayerIndex,
+    passCount: gameState.passCount,
+    gameOver: gameState.gameOver,
+    teamLevels: gameState.teamLevels,
+    finishingOrder: gameState.finishingOrder,
+    finishingPlays: gameState.finishingPlays,
+    declarerTeam: gameState.declarerTeam,
+    tableController: gameState.tableController,
+    consecutiveControlCount: gameState.consecutiveControlCount,
+    lastFinishingOrder: gameState.lastFinishingOrder,
+    isTributePhase: gameState.isTributePhase,
+    pendingReturns: gameState.pendingReturns,
+    humanTributeLog: gameState.humanTributeLog,
+    tributeResistedMessage: gameState.tributeResistedMessage,
+    botTributeLogs: gameState.botTributeLogs,
+    aceAttempts: gameState.aceAttempts,
+    gameWon: gameState.gameWon,
+    winningTeam: gameState.winningTeam,
+    currentTrick: gameState.currentTrick,
+    currentLevel: currentLevel,
+    passedPlayers: gameState.passedPlayers
+  };
+
+  try {
+    localStorage.setItem('guandan-save', JSON.stringify(snapshot));
+  } catch (err) {
+    console.error('Failed to save game state:', err);
+  }
+}
+
+function loadGameState() {
+  const raw = localStorage.getItem('guandan-save');
+  if (!raw) return false;
+
+  try {
+    const snapshot = JSON.parse(raw);
+    Object.assign(gameState, snapshot);
+    if (snapshot.currentLevel != null) {
+      setCurrentLevel(snapshot.currentLevel);
+    }
+    return true;
+  } catch (err) {
+    console.error('Failed to load saved game state:', err);
+    return false;
+  }
+}
+
+function clearSavedGame() {
+  localStorage.removeItem('guandan-save');
 }
 
 function initGame() {
@@ -1052,11 +1121,14 @@ export function startNewRound() {
   gameState.tributeResistedMessage = null;
   gameState.botTributeLogs = [];
   gameState.finishingPlays = {};
+  gameState.passedPlayers = [];
 
   gameState.activePlayerIndex = nextLeader;
 
   initGame();
   gameState.handleTributes();
+
+  saveGameState();
 }
 
 function evaluateTribute(previousFinishingOrder) {
@@ -1114,9 +1186,12 @@ export function startNewGame() {
   setCurrentLevel(2); 
   
   startNewRound();
+  saveGameState();
 }
 
-initGame();
+if (!loadGameState()) {
+  initGame();
+}
 // gameState.teamLevels = [14, 2];
 // gameState.declarerTeam = 0;
 
