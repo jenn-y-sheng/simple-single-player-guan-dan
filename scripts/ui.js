@@ -460,22 +460,6 @@ document.addEventListener('levelUpdated', (event) => {
   }
 
   document.getElementById('victory-banner').style.display = 'block';
-
-  // if (newLevel >= 14) {
-  //   titleEl.textContent = `TEAM ${team} WINS IT ALL!`;
-  //   subtitleEl.textContent = `They have reached the Ace!`;
-    
-  //   document.getElementById('button-next-round').style.display = 'none';
-  // } else {
-  //   titleEl.textContent = `Team ${team} Wins!`;
-  //   subtitleEl.textContent = `Promoted ${levels} Level${levels > 1 ? 's' : ''}!`;
-  // }
-
-  // document.getElementById('victory-banner').style.display = 'block';
-
-  // if (newLevel < 14) {
-  //   document.getElementById('button-next-round').style.display = 'block';
-  // }
 });
 
 document.getElementById('button-next-round').addEventListener('click', (event) => {
